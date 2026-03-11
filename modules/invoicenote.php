@@ -963,8 +963,8 @@ switch ($action) {
                 );
                 $DB->Execute('INSERT INTO cash (time, userid, value, currency, currencyvalue, taxid, customerid, comment, docid, itemid, servicetype)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array_values($args));
-
-		if (ConfigHelper::getConfig('phpui.stock') && count($stckUnSell)) {
+		
+		if (ConfigHelper::getConfig('phpui.stock') && count($stckUnSell) && ctype_digit($item['stockid'])) {
 			$balance = $DB->GetLastInsertID();
 			$LMSST->BalanceAddStockID($item['stockid'], $balance, '0');
 		}
