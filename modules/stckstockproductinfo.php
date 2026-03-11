@@ -17,7 +17,7 @@ $layout['pagetitle'] = trans('Stock position: $a', '('.$product['id'].') '.$prod
 $SMARTY->assign('product', $product);
 
 //$SMARTY->assign('wlist', $wlist);
-if ($_GET['short'] == '1')
+if (isset($_GET['short']) && $_GET['short'] == '1')
 	$SMARTY->display('stck/stckstockproductinfoshort.html');
 else
 	$SMARTY->display('stck/stckstockproductinfo.html');
