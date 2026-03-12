@@ -372,7 +372,15 @@ switch ($action) {
             }
         }
 
-        $itemdata['discount'] = str_replace(',', '.', $itemdata['discount']);
+	if (ConfigHelper::getConfig('phpui.stock')) { //Added for lms-stock stck STCK Sarenka
+		if (!ctype_digit($itemdata['stockid']) || !ctype_digit($itemdata['stckgtuid'])) {
+			unset($itemdata['stockid']);
+			unset($itemdata['stckgtuid']);
+		}
+
+	}
+
+	$itemdata['discount'] = str_replace(',', '.', $itemdata['discount']);
         $itemdata['pdiscount'] = 0;
         $itemdata['vdiscount'] = 0;
         if (preg_match('/^[0-9]+(\.[0-9]+)*$/', $itemdata['discount'])) {

@@ -633,6 +633,11 @@
 								<textarea name="name" cols="40" rows="1" class="lms-ui-autogrow lms-ui-autocomplete" style="width:300px"
 										  placeholder="{trans('... or enter description')}"
 								>{if isset($itemdata) && !isset($error.posuid)}{$itemdata.name|escape}{/if}</textarea>
+								{if $item.stckproductid}
+									<INPUT TYPE="hidden" NAME="stockid" value=""><!-- Added for STCK by Sarenka MAXCON -->
+									<INPUT TYPE="hidden" NAME="stckgtuid" value=""><!-- Added for STCK by Sarenka MAXCON -->
+								{/if}
+
 								<span id="tariff-price-variants"></span>
 							</div>
 						</td>
@@ -796,6 +801,7 @@
 	}
 
 	function addItem() {
+		alert('TEST');
 		netPriceElem.prop('disabled', false);
 		grossPriceElem.prop('disabled', false);
 		taxElem.prop('disabled', false);
