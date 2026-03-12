@@ -2619,11 +2619,11 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 			foreach($cnote['content'] as $idx => $item) {
 				if ($item['stockid']) {
 					if ($cnote['invoice']['content'][$item['itemid']]['stockid'] != $item['stockid']) {
-						print_r('UNKNOWN ERROR! cnote stockid != cnote[invoce] stockid!');
-						print_r($cnote['invoice']['content']);
-						print_r($item);
+						echo "<pre>";
+						print_r('UNKNOWN ERROR! cnote stockid != cnote[invoce] stockid! CNOTE:');
 						print_r($cnote);
 						$this->db->RollbackTrans();
+						echo "</pre>";
 						exit;
 					}
 					$LMSST->StockSell($cnote['invoice']['id'], $cnote['invoice']['content'][$item['itemid']]['stockid'], $cnote['invoice']['content'][$item['itemid']]['grossprice'], $cnote['invoice']['sdate'], $cnote['invoice']['content'][$item['itemid']]['count']); 
