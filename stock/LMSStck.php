@@ -1,6 +1,12 @@
 <?php
 /* lms-stck INIT FILE */
-
+function print_pre($data, $stop = false) {
+	echo "<pre>";print_r($data);echo "</pre>";
+	if ($stop) {
+		echo "STOP";
+		exit;
+	}
+}
 //Sorry, bo no-go for postgres :(
 if (ConfigHelper::getConfig('database.database') == 'postgres') {
  	trigger_error("lms-stck doesn`t support PostgreSQL (yet)!", E_USER_WARNING);
