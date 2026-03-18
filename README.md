@@ -9,4 +9,12 @@ computers inventory (IP, MAC), simple financial system suited for network operat
 
 # lms-stock
 Modifications for master`s LMS aimed to provide basic stock management.
-Current status: rebuild current LMS lms, work-in-progress - not working. 
+Current status: working, waiting for bug reports :)
+
+ToDo:
+- full support for cnote with adding/replacing stock items
+- awaiting KSeF
+
+Considering:
+- fiscal pritner support
+- completion
