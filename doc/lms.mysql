@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS up_rights_assignments;
 DROP TABLE IF EXISTS up_rights;
 DROP TABLE IF EXISTS ksefinvoicetagassignments;
 DROP TABLE IF EXISTS ksefinvoicetags;
+DROP TABLE IF EXISTS ksefinvoicesummaries;
 DROP TABLE IF EXISTS ksefinvoicethirdsubjects;
 DROP TABLE IF EXISTS ksefinvoices;
 DROP TABLE IF EXISTS ksefdocuments;
@@ -3351,6 +3352,24 @@ CREATE TABLE ksefinvoicethirdsubjects (
 
 # ---------------------------------------------------
 #
+# Structure of table ksefinvoicesummaries
+#
+CREATE TABLE ksefinvoicesummaries (
+    ksef_invoice_id int(11) NOT NULL,
+    net_amount numeric(12,5) NOT NULL,
+    gross_amount numeric(12,5) NOT NULL,
+    vat_amount numeric(12,5) NOT NULL,
+    tax_rate numeric(4,2),
+    taxed smallint DEFAULT 1,
+    reverse_charge smallint DEFAULT 0,
+    eu smallint DEFAULT 0,
+    export smallint DEFAULT 0,
+    CONSTRAINT ksefinvoicesummaries_ksef_invoice_id_fkey
+        FOREIGN KEY (ksef_invoice_id) REFERENCES ksefinvoices (id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+# ---------------------------------------------------
+#
 # Structure of table ksefinvoiceitems
 #
 CREATE TABLE ksefinvoiceitems (
@@ -3370,8 +3389,10 @@ CREATE TABLE ksefinvoiceitems (
     export smallint DEFAULT 0,
     product_service_group smallint DEFAULT 0,
     before_state smallint DEFAULT 0,
+    order_id text DEFAULT NULL,
     CONSTRAINT ksefinvoiceitems_ksef_invoice_id_fkey
-        FOREIGN KEY (ksef_invoice_id) REFERENCES ksefinvoices (id) ON DELETE CASCADE ON UPDATE CASCADE
+        FOREIGN KEY (ksef_invoice_id) REFERENCES ksefinvoices (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    KEY ksefinvoiceitems_order_id_idx (order_id(255))
 ) ENGINE=InnoDB;
 
 # ---------------------------------------------------
@@ -4665,4 +4686,4 @@ INSERT INTO netdevicemodels (name, alternative_name, netdeviceproducerid) VALUES
 ('XR7', 'XR7 MINI PCI PCBA', 2),
 ('XR9', 'MINI PCI 600MW 900MHZ', 2);
 
-INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026031200');
+INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026031600');
