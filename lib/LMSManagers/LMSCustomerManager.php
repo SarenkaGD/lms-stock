@@ -24,6 +24,8 @@
  *  $Id$
  */
 
+use \Lms\KSeF\KSeF;
+
 /**
  * LMSCustomerManager
  *
@@ -316,11 +318,13 @@ class LMSCustomerManager extends LMSManager implements LMSCustomerManagerInterfa
                 (CASE WHEN EXISTS (SELECT 1 FROM documents d2 WHERE d2.reference = documents.id AND d2.type < 0) THEN 1 ELSE 0 END) AS documentreferenced,
                 documents.cdate, documents.number, numberplans.template,
                 kd.status AS ksefstatus,
+                kd.statusdescription AS ksefstatusdescription,
+                kd.statusdetails AS ksefstatusdetails,
                 kd.hash AS ksefhash,
                 kd.ksefnumber AS ksefnumber,
                 kdl.delay AS ksefdelay,
                 (CASE
-                    WHEN documents.cdate >= ' . strtotime('2026/02/01') . '
+                    WHEN documents.cdate >= ' . KSeF::getBoundaryDate() . '
                         AND kdl.delay > -1
                         AND ?NOW? - documents.cdate >= kdl.delay
                         AND documents.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
@@ -331,12 +335,31 @@ class LMSCustomerManager extends LMSManager implements LMSCustomerManagerInterfa
                         )
                     THEN 1
                     ELSE 0
-                END) AS ksefsubmit
+                END) AS ksefsubmit,
+                (CASE
+                    WHEN documents.cdate >= ' . KSeF::getBoundaryDate() . '
+                        AND documents.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
+                        AND (
+                            c.type = ' . CTYPES_COMPANY . '
+                            OR kac.allconsumers = 1
+                            OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = documents.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
+                        )
+                    THEN 1
+                    ELSE 0
+                END) AS ksefsubmission
             FROM cash
             LEFT JOIN customers c ON c.id = cash.customerid
             LEFT JOIN vusers ON vusers.id = cash.userid
             LEFT JOIN documents ON documents.id = cash.docid
-            LEFT JOIN ksefdocuments kd ON kd.docid = documents.id AND kd.status IN ?
+            LEFT JOIN (
+                SELECT
+                    kd.docid,
+                    MAX(kd.id) AS maxid
+                FROM ksefdocuments kd
+                WHERE kd.status > 0 AND (kd.status < ? OR kd.status >= ?)
+                GROUP BY kd.docid
+            ) kd2 ON kd2.docid = documents.id
+            LEFT JOIN ksefdocuments kd ON kd.docid = documents.id AND (kd.status IN ? OR kd.id = kd2.maxid)
             LEFT JOIN ksefdelays kdl ON kdl.divisionid = documents.divisionid
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = documents.divisionid
             LEFT JOIN numberplans ON numberplans.id = documents.numberplanid
@@ -355,10 +378,13 @@ class LMSCustomerManager extends LMSManager implements LMSCustomerManagerInterfa
                     0 AS documentreferenced,
                     d.cdate, d.number, numberplans.template,
                     null AS ksefstatus,
+                    null AS ksefstatusdescription,
+                    null AS ksefstatusdetails,
                     null AS ksefhash,
                     null AS ksefnumber,
                     null AS ksefdelay,
-                    0 AS ksefsubmit
+                    0 AS ksefsubmit,
+                    0 AS ksefsubmission
                 FROM documents d
                 JOIN ' . (ConfigHelper::getConfig('database.type') == 'postgres' ? 'get_invoice_contents(' . intval($id) . ')' : 'vinvoicecontents') . ' ic ON ic.docid = d.id
                 LEFT JOIN (
@@ -371,6 +397,8 @@ class LMSCustomerManager extends LMSManager implements LMSCustomerManagerInterfa
                 . ($totime ? ' AND d.cdate <= ' . intval($totime) : '') . ')
             ORDER BY time, docid, id',
             [
+                200,
+                300,
                 [
                     200,
                     0,

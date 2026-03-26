@@ -30,6 +30,8 @@ use setasign\Fpdi\PdfParser\StreamReader;
 use setasign\FpdiProtection\FpdiProtection;
 */
 
+use \Lms\KSeF\KSeF;
+
 /**
  * LMSDocumentManager
  *
@@ -3921,9 +3923,18 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
             FROM documents d
             JOIN customers c ON c.id = d.customerid
             LEFT JOIN ksefdocuments kd ON kd.docid = d.id
+            LEFT JOIN (
+                SELECT
+                    kd.docid,
+                    MAX(kd.id) AS maxid
+                FROM ksefdocuments kd
+                WHERE kd.status >= ? AND kd.status < ?
+                GROUP BY kd.docid
+            ) kd2 ON kd2.docid = d.id
             LEFT JOIN ksefdelays kds ON kds.divisionid = d.divisionid
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
             WHERE d.id = ?
+                AND d.cdate >= ?
                 AND (
                     kd.id IS NOT NULL AND kd.status IN ?
                     OR kds.delay > -1 AND ?NOW? - d.cdate >= kds.delay
@@ -3932,9 +3943,13 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
                         OR kac.allconsumers = ?
                         OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ?)
                     )
+                    AND kd.id <> kd2.maxid
                 )',
             [
+                400,
+                500,
                 $docid,
+                KSeF::getBoundaryDate(),
                 [
                     200,
                     0,
@@ -3954,9 +3969,18 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
             JOIN documents d ON d.id = c.docid
             JOIN customers ON customers.id = c.customerid
             LEFT JOIN ksefdocuments kd ON kd.docid = d.id
+            LEFT JOIN (
+                SELECT
+                    kd.docid,
+                    MAX(kd.id) AS maxid
+                FROM ksefdocuments kd
+                WHERE kd.status >= ? AND kd.status < ?
+                GROUP BY kd.docid
+            ) kd2 ON kd2.docid = d.id
             LEFT JOIN ksefdelays kds ON kds.divisionid = d.divisionid
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
             WHERE c.id = ?
+                AND d.cdate >= ?
                 AND (
                     kd.id IS NOT NULL AND kd.status IN ?
                     OR kds.delay > -1 AND ?NOW? - d.cdate >= kds.delay
@@ -3965,9 +3989,13 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
                         OR kac.allconsumers = ?
                         OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = c.customerid AND cc.type = ?)
                     )
+                    AND kd.id <> kd2.maxid
                 )',
             [
+                400,
+                500,
                 $cashid,
+                KSeF::getBoundaryDate(),
                 [
                     200,
                     0,

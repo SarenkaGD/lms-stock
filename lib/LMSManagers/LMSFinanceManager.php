@@ -24,6 +24,8 @@
  *  $Id$
  */
 
+use \Lms\KSeF\KSeF;
+
 /**
  * LMSFinanceManager
  *
@@ -2275,11 +2277,13 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 			(CASE WHEN EXISTS (SELECT 1 FROM documents d2 WHERE d2.reference = d.id AND d2.type > 0) THEN 1 ELSE 0 END) AS referenced,
 			(CASE WHEN EXISTS (SELECT 1 FROM documents d3 WHERE d3.reference = d.id AND d3.type < 0) THEN 1 ELSE 0 END) AS documentreferenced,
                 kd.status AS ksefstatus,
+                kd.statusdescription AS ksefstatusdescription,
+                kd.statusdetails AS ksefstatusdetails,
                 kd.hash AS ksefhash,
                 kd.ksefnumber AS ksefnumber,
                 kdl.delay AS ksefdelay,
                 (CASE
-                    WHEN d.cdate >= ' . strtotime('2026/02/01') . '
+                    WHEN d.cdate >= ' . KSeF::getBoundaryDate() . '
                         AND kdl.delay > -1
                         AND ?NOW? - d.cdate >= kdl.delay
                         AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
@@ -2290,9 +2294,28 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                         )
                     THEN 1
                     ELSE 0
-                END) AS ksefsubmit
+                END) AS ksefsubmit,
+                (CASE
+                    WHEN d.cdate >= ' . KSeF::getBoundaryDate() . '
+                        AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
+                        AND (
+                            c.type = ' . CTYPES_COMPANY . '
+                            OR kac.allconsumers = 1
+                            OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
+                        )
+                    THEN 1
+                    ELSE 0
+                END) AS ksefsubmission
             FROM documents d
-            LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.status IN (' . implode(',', [0, 200]) . ')
+            LEFT JOIN (
+                SELECT
+                    kd.docid,
+                    MAX(kd.id) AS maxid
+                FROM ksefdocuments kd
+                WHERE kd.status > 0 AND (kd.status < ' . 200 . ' OR kd.status >= ' . 300 . ')
+                GROUP BY kd.docid
+            ) kd2 ON kd2.docid = d.id
+            LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND (kd.status IN (' . implode(',', [0, 200]) . ') OR kd.id = kd2.maxid)
             LEFT JOIN ksefdelays kdl ON kdl.divisionid = d.divisionid
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
             JOIN vinvoicecontents a ON (a.docid = d.id)'
@@ -2333,7 +2356,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             . ' GROUP BY d.id, d2.id, d.number, d.cdate, d.customerid,
                     d.name, d.address, d.zip, d.city, numberplans.template, d.closed, d.type, d.reference, countries.name,
                     d.cancelled, d.published, sendinvoices, d.archived, d.senddate, d.currency, d.currencyvalue,
-                    kd.status, kd.hash, kd.ksefnumber, kdl.delay, kac.allconsumers, c.type '
+                    kd.status, kd.statusdescription, kd.statusdetails, kd.hash, kd.ksefnumber, kdl.delay, kac.allconsumers, c.type '
             . ($having ?? '')
             . $sqlord.' '.$direction
             . (isset($limit) ? ' LIMIT ' . $limit : '')
@@ -2634,7 +2657,19 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 
         $document_manager->DeleteDocumentAddresses($invoiceid);
 
-	$this->db->Execute('DELETE FROM documents WHERE id = ?', array($invoiceid));
+        $this->db->Execute(
+            'DELETE FROM ksefdocuments
+            WHERE docid = ?
+                AND status >= ?
+                AND status < ?',
+            [
+                $invoiceid,
+                400,
+                500,
+            ]
+        );
+
+        $this->db->Execute('DELETE FROM documents WHERE id = ?', array($invoiceid));
     }
 
     public function InvoiceContentDelete($invoiceid, $itemid = 0)

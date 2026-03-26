@@ -78,6 +78,8 @@ class KSeF
 
     private static $docTypes;
 
+    private static $boundaryDate;
+
     private static $identifierTypes = [
         'Nip' => self::IDENTIFIER_TEN,
         'VatUe' => self::IDENTIFIER_VAT_UE,
@@ -149,6 +151,19 @@ class KSeF
 
         $this->showOnlyAlternativeAccounts = \ConfigHelper::checkConfig('invoices.show_only_alternative_accounts');
         $this->showAllAccounts = \ConfigHelper::checkConfig('invoices.show_all_accounts');
+    }
+
+    public static function getBoundaryDate()
+    {
+        if (empty(self::$boundaryDate)) {
+            self::$boundaryDate = \ConfigHelper::getConfig('ksef.boundary_date', '2026/04/01');
+            self::$boundaryDate = strtotime(self::$boundaryDate);
+            if (self::$boundaryDate === false) {
+                self::$boundaryDate = strtotime('2026/04/01');
+            }
+        }
+
+        return self::$boundaryDate;
     }
 
     public function updateDelays(): array
@@ -791,6 +806,20 @@ class KSeF
         }
         if (!empty($invoice['flags'][DOC_FLAG_RELATED_ENTITY])) {
             $xml .= "\t\t<TP>1</TP>" . PHP_EOL;
+        }
+
+        if (!empty($invoice['comment'])) {
+            $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
+                . "\t\t\t<Klucz>Komentarz</Klucz>" . PHP_EOL
+                . "\t\t\t<Wartosc>". htmlspecialchars($invoice['comment']) . "</Wartosc>" . PHP_EOL
+                . "\t\t</DodatkowyOpis>" . PHP_EOL;
+        }
+
+        if (!empty($invoice['memo'])) {
+            $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
+                . "\t\t\t<Klucz>Memo</Klucz>" . PHP_EOL
+                . "\t\t\t<Wartosc>". htmlspecialchars($invoice['memo']) . "</Wartosc>" . PHP_EOL
+                . "\t\t</DodatkowyOpis>" . PHP_EOL;
         }
 
         $refInvoiceContent = empty($invoice['invoice']) ? null : $invoice['invoice']['content'];
@@ -1959,7 +1988,7 @@ class KSeF
                 AND kd.status = ?
             GROUP BY d.divisionid, d.div_ten',
             [
-                strtotime('2026/02/01'),
+                self::getBoundaryDate(),
                 //KSeF::ENVIRONMENT_TEST,
                 KSeF::ENVIRONMENT_PROD,
                 200,
