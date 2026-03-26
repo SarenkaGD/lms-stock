@@ -662,7 +662,7 @@ class LMSStck {
 		Auth::GetCurrentUser(),
 		$pe['id']));
 		if ($og != $pe['groupid']) {
-			$this->DB->Execute('UPDATE stck_stock SET s.groupid = ? WHERE s.productid = ?', array($pe['groupid']));
+			$this->DB->Execute('UPDATE stck_stock SET s.groupid = ? WHERE s.productid = ?', array($pe['groupid'], $pe['id']));
 			$this->DB->CommitTrans();
 		}
 		return $pe['id'];
