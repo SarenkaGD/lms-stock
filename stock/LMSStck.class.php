@@ -183,7 +183,9 @@ class LMSStck {
 
 	function WarehouseGetInfoById($id) {
 		if ($wi = $this->DB->GetRow("SELECT w.*, u.name as createdby,
-			SUM(IF(s.sold = 0, s.pricebuynet, 0)) as valuenet,  SUM(IF(s.sold = 0, s.pricebuygross, 0)) as valuegross, SUM(IF(s.sold = 0, 1, 0)) as count
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuynet ELSE 0 END) as valuenet,
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuygross ELSE 0 END) as valuegross,
+			SUM(CASE WHEN s.sold = 0 THEN 1 ELSE 0 END) as count
 			FROM stck_warehouses w
 			LEFT JOIN vusers u ON w.creatorid = u.id
 			LEFT JOIN stck_stock s ON s.warehouseid = w.id
@@ -257,7 +259,9 @@ class LMSStck {
 
 	function ManufacturerGetInfoById($id) {
 		if ($mi = $this->DB->GetRow("SELECT m.*, u1.name as createdby, u2.name as modifiedby,
-			SUM(IF (s.sold = 0, s.pricebuynet, 0)) as valuenet,  SUM(IF(s.sold=0, s.pricebuygross, 0)) as valuegross, SUM(IF(s.sold = 0, 1, 0)) as count
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuynet ELSE 0 END) as valuenet,
+			SUM(CASE WHEN s.sold=0 THEN s.pricebuygross ELSE 0 END) as valuegross,
+			SUM(CASE WHEN s.sold = 0 THEN 1 ELSE 0 END) as count
 			FROM stck_manufacturers m
 			LEFT JOIN vusers u1 ON u1.id = m.creatorid
 			LEFT JOIN vusers u2 ON u2.id = m.creatorid
@@ -322,7 +326,7 @@ class LMSStck {
 	/* GROUPS */
 
 	function GroupAdd($group) {
-		if ($this->DB->Execute("INSERT INTO stck_groups(quantityid, quantitycheck, name, comment, creationdate, creatorid) VALUES(?, IFNULL(?, 0), ?, ?, ?NOW?, ?)", array(
+		if ($this->DB->Execute("INSERT INTO stck_groups(quantityid, quantitycheck, name, comment, creationdate, creatorid) VALUES(?, (CASE WHEN ? = NULL THEN 0 ELSE 1 END), ?, ?, ?NOW?, ?)", array(
 			$group['quantityid'],
 			$group['quantitycheck'],
 			$group['name'],
@@ -336,7 +340,9 @@ class LMSStck {
 	function GroupGetInfoById($id) {
 		if ($gi = $this->DB->GetRow("SELECT g.*, u1.name as createdby, u2.name as modifiedby,
 			q.name as quantityname,
-			SUM(IF(s.sold = 0, s.pricebuynet, 0)) as valuenet,  SUM(IF(s.sold = 0, s.pricebuygross, 0)) as valuegross, SUM(IF(s.sold = 0, 1, 0)) as count
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuynet ELSE 0 END) as valuenet,
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuygross ELSE 0 END) as valuegross,
+			SUM(CASE WHEN s.sold = 0 THEN 1 ELSE 0 END) as count
 			FROM stck_groups g
 			LEFT JOIN vusers u1 ON u1.id = g.creatorid
 			LEFT JOIN vusers u2 ON u2.id = g.modid
@@ -409,7 +415,7 @@ class LMSStck {
 				WHERE s.sold = 0
 				GROUP BY(s.groupid)
 			) AS sij ON sij.groupid = g.id
-			WHERE 1'
+			WHERE 1=1'
 			.($start ? ' AND UPPER(g.name) LIKE \''.$start.'%\' ' : '')
 			.($sqlord != '' ? $sqlord.' '.$direction : ''))) {
 				$ggl['total'] = sizeof($ggl);
@@ -503,7 +509,7 @@ class LMSStck {
 	/* PRODUCTS */
 
 	function ProductAdd($pa) {
-		if ($this->DB->Execute("INSERT INTO stck_products(manufacturerid, groupid, taxid, typeid, quantityid, quantitycheck, ean, quantity, name, gprice, srp, creationdate, creatorid, gtu_id) VALUES(?, ?, ?, ?, ?, IFNULL(?, 0), ?, ?, ?, ?, ?, ?NOW?, ?, ?)", array(
+		if ($this->DB->Execute("INSERT INTO stck_products(manufacturerid, groupid, taxid, typeid, quantityid, quantitycheck, ean, quantity, name, gprice, srp, creationdate, creatorid, gtu_id) VALUES(?, ?, ?, ?, ?, (CASE WHEN ? = NULL THEN 0 ELSE 1 END), ?, ?, ?, ?, ?, ?NOW?, ?, ?)", array(
 			$pa['manufacturerid'],
 			$pa['groupid'],
 			$pa['taxid'],
@@ -618,7 +624,9 @@ class LMSStck {
 			q.name as qname,
 			t.name as tname,
 			tx.value as tax, tx.label as txname,
-			SUM(IF(s.sold = 0, s.pricebuynet, 0)) as valuenet,  SUM(IF(s.sold = 0, s.pricebuygross, 0)) as valuegross, SUM(IF(s.sold = 0, 1, 0)) as count,
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuynet ELSE 0 END) as valuenet,
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuygross ELSE 0 END) as valuegross,
+			SUM(CASE WHEN s.sold = 0 THEN 1 ELSE 0 END) as count,
 			sg.code as gtu
 			FROM stck_products p
 			LEFT JOIN stck_manufacturers m ON m.id = p.manufacturerid
@@ -704,7 +712,7 @@ class LMSStck {
 			LEFT JOIN stck_manufacturers m ON m.id = p.manufacturerid
 			LEFT JOIN stck_groups g ON g.id = p.groupid
 			LEFT JOIN stck_vstockcount vsc ON vsc.productid = p.id
-			WHERE 1"
+			WHERE 1=1"
 			.($deleted ? '' : ' AND p.deleted = 0')
 			.($manufacturerid ? ' AND m.id = '.$manufacturerid : '')
 			.($groupid ? ' AND p.groupid = '.$groupid : '')
@@ -729,7 +737,9 @@ class LMSStck {
 			q.name as qname,
 			t.name as tname,
 			tx.value as tax, tx.label as txname,
-			SUM(IF(s.sold = 0, s.pricebuynet, 0)) as valuenet,  SUM(IF(s.sold = 0, s.pricebuygross, 0)) as valuegross, SUM(IF(s.sold = 0, 1, 0)) as count
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuynet ELSE 0 END) as valuenet,
+			SUM(CASE WHEN s.sold = 0 THEN s.pricebuygross ELSE 0 END) as valuegross,
+			SUM(CASE WHEN s.sold = 0 THEN 1 ELSE 0 END) as count
 			FROM stck_products p
 			LEFT JOIN stck_manufacturers m ON m.id = p.manufacturerid
 			LEFT JOIN stck_groups g ON g.id = p.groupid
@@ -958,7 +968,7 @@ class LMSStck {
 			LEFT JOIN stck_receivenotes rn ON s.enterdocumentid = rn.id
 			'.($ssp ? 'LEFT JOIN documents d ON s.quitdocumentid = d.id
 			LEFT JOIN customers c2 ON c2.id = d.customerid' : '').'
-			WHERE 1'
+			WHERE 1=1'
 			.($prodid ? ' AND s.productid = '.$prodid : '')
 			.($docid ? ' AND s.enterdocumentid = '.$docid : '')
 			.($ssp ? '' : ' AND s.sold = 0')
@@ -1100,7 +1110,7 @@ class LMSStck {
 			CONCAT(c.lastname, \' \', c.name) as sname, c.id as sid
 			FROM stck_receivenotes rn
 			LEFT JOIN customers c ON c.id = rn.supplierid
-			WHERE 1'
+			WHERE 1=1'
 			.($supplierid ? ' AND rn.supplierid = '.$supplierid : '')
 			.($docnumber ? ' AND rn.number LIKE '.$docnumber : '')
 			.($sprn ? '' : ' AND rn.paid IS NULL')
