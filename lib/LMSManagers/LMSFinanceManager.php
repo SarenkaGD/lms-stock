@@ -2312,10 +2312,9 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                     kd.docid,
                     MAX(kd.id) AS maxid
                 FROM ksefdocuments kd
-                WHERE kd.status > 0 AND (kd.status < ' . 200 . ' OR kd.status >= ' . 300 . ')
                 GROUP BY kd.docid
             ) kd2 ON kd2.docid = d.id
-            LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND (kd.status IN (' . implode(',', [0, 200]) . ') OR kd.id = kd2.maxid)
+            LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.id = kd2.maxid
             LEFT JOIN ksefdelays kdl ON kdl.divisionid = d.divisionid
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
             JOIN vinvoicecontents a ON (a.docid = d.id)'
@@ -2810,6 +2809,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 				d.post_address_id,
 				d.currency, d.currencyvalue, d.memo,
 				d.extid,
+                c.type AS customertype,
 				(CASE WHEN cc.type IS NULL THEN 0 ELSE 1 END) AS balance_on_documents,
 				(CASE WHEN kac.allconsumers = 1 OR cc2.type IS NOT NULL THEN 1 ELSE 0 END) AS ksef_invoice_consent,
                 kd.ksefnumber,
@@ -2818,7 +2818,9 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 kbs.environment AS ksefenvironment
 				FROM documents d'
                 . (empty($userid) ? '' : ' JOIN userdivisions ud ON ud.divisionid = d.divisionid AND ud.userid = ' . $userid)
-                . ' LEFT JOIN numberplans n ON (d.numberplanid = n.id)
+                . '
+                JOIN customers c ON c.id = d.customerid
+                LEFT JOIN numberplans n ON (d.numberplanid = n.id)
 				LEFT JOIN vusers u ON u.id = d.userid
 				LEFT JOIN customerconsents cc ON cc.customerid = d.customerid AND cc.type = ?
 				LEFT JOIN customerconsents cc2 ON cc2.customerid = d.customerid AND cc2.type = ?
@@ -3019,6 +3021,11 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
         }
 
         if ($result) {
+            $result['ksef_warning'] = $result['doctype'] != DOC_INVOICE_PRO
+                && empty($result['ksefnumber'])
+                && $result['cdate'] >= KSeF::getBoundaryDate()
+                && (!empty($result['ksef_invoice_consent']) || $result['customertype'] == CTYPES_COMPANY);
+
             $result['export'] = $result['division_countryid'] && $result['countryid'] && $result['division_countryid'] != $result['countryid'];
 
             $result['name'] = trim($result['name']);
