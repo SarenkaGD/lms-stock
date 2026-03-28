@@ -856,7 +856,7 @@ class LMSStck {
 	function StockPositionEdit($position) {
 		$position['pricebuynet'] = str_replace(',','.', $position['pricebuynet']);
 		$position['pricebuygross'] = str_replace(',','.', $position['pricebuygross']);
-
+		
 		if ($this->DB->Execute('UPDATE stck_stock SET warehouseid = ?, serialnumber = ?, pricebuynet = ?,
 		taxid = ?, pricebuygross = ?, modid = ?, sold = ?, moddate = ?NOW?, comment = ? WHERE id = ?', array(
 			$position['warehouseid'],
@@ -874,7 +874,8 @@ class LMSStck {
 			$docid = $this->DB->GetOne('SELECT enterdocumentid FROM stck_stock WHERE id = ?', array($position['id']));
 			$this->ReceiveNoteUpdateValue($docid);
 			if ($position['sold']) {
-				$position['pricesell'] = str_replace(',','.', $position['pricesell']);
+				if (isset($position['pricesell']))
+					$position['pricesell'] = str_replace(',','.', $position['pricesell']);
 				$this->StockSell(NULL, $position['id'], $position['pricesell'], $position['leavedate']);
 			}
 			return true;

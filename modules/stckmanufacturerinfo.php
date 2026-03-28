@@ -62,12 +62,12 @@ if (isset($_POST['filter'])) {
 
 $productlist = $LMSST->StockProductList($o, NULL, $ssp, NULL, NULL, $manufacturerinfo['id'], NULL, $filter);
 //$productlist = $LMSST->StockList($o, $manufacturerinfo['id']);
-$listdata['total'] = $productlist['total'];
-$listdata['totalvn'] = $productlist['totalvn'];
-$listdata['totalvg'] = $productlist['totalvg'];
-$listdata['totalpcs'] = $productlist['totalpcs'];
-$listdata['direction'] = $productlist['direction'];
-$listdata['order'] = $productlist['order'];
+$listdata['total'] = (isset($productlist['total']) ? $productlist['total'] : NULL);
+$listdata['totalvn'] = (isset($productlist['totalvn']) ? $productlist['totalvn'] : NULL);
+$listdata['totalvg'] = (isset($productlist['totalvg']) ? $productlist['totalvg'] : NULL);
+$listdata['totalpcs'] = (isset($productlist['totalpcs']) ? $productlist['totalpcs'] : NULL);
+$listdata['direction'] = (isset($productlist['direction']) ? $productlist['direction'] : NULL);
+$listdata['order'] = (isset($productlist['order']) ? $productlist['order'] : NULL);
 $listdata['id'] = $manufacturerinfo['id'];
 unset($productlist['total']);
 unset($productlist['direction']);

@@ -22,7 +22,7 @@ if (isset($_POST['productedit'])) {
 	if (!preg_match('/^\d+[,.]{0,1}\d{0,2}$/i', $productedit['pricebuygross']))
 		$error['pricegross'] = 'Wrong or missing price!';
 
-	if ($productedit['sold'])
+	if (isset($productedit['sold']))
 		$productedit['sold'] = 1;
 	else
 		$productedit['sold'] = '0';
@@ -42,12 +42,12 @@ if (isset($_POST['productedit'])) {
 		} else
 			$error['leavedate'] = trans('Incorrect date format! Enter date in YYYY/MM/DD format!');
 	} else {
-		unset($productedit['leavedate']);
-		unset($productedit['pricesell']);
+		$productedit['leavedate'] = NULL;
+		$productedit['pricesell'] = NULL;
 	}
 
 	if (!$error) {
-		if ($productedit['leavedate'])
+		if (isset($productedit['leavedate']) && $productedit['leavedate'] != NULL)
 			$productedit['leavedate'] = DateChange($productedit['leavedate']);
 		$taxvalue = isset($productedit['taxid']) ? $taxeslist[$productedit['taxid']]['value'] : 0;
 		if ($productedit['pricebuynet'] != 0) {

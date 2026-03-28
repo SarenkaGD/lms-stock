@@ -28,14 +28,15 @@ if(!ctype_digit($_GET['id']) || !$LMSST->ReceiveNoteExists($_GET['id'])) {
 	$SESSION->redirect('?m=stckreceivenotelist');
 }
 
-switch ($_GET['action']) {
-	case 'srna':
-		$LMSST->ReceiveNoteAccount($_GET['id']);
-		$SESSION->redirect('?m=stckreceivenoteinfo&id='.$_GET['id']);
-		break;
-	default:
-		break;
-}
+if (isset($_GET['action']))
+	switch ($_GET['action']) {
+		case 'srna':
+			$LMSST->ReceiveNoteAccount($_GET['id']);
+			$SESSION->redirect('?m=stckreceivenoteinfo&id='.$_GET['id']);
+			break;
+		default:
+			break;
+	}
 
 $receivenoteinfo = $LMSST->ReceiveNoteGetInfoById($_GET['id']);
 
@@ -91,7 +92,7 @@ $page = (! $_GET['page'] ? 1 : $_GET['page']);
 
 $SESSION->save('smirnpl', $page);
 
-$pagelimit = (! $CONFIG['phpui']['productlist_pagelimit'] ? $listdata['total'] : $CONFIG['phpui']['productlist_pagelimit']);
+$pagelimit = (!isset($CONFIG['phpui']['productlist_pagelimit']) ? $listdata['total'] : $CONFIG['phpui']['productlist_pagelimit']);
 $start = ($page - 1) * $pagelimit;
 
 $SESSION->save('smipl', $page);

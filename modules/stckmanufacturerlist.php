@@ -4,10 +4,10 @@ function check($str){
 	return ($c>=ord('A') && $c<=ord('Z'));  // it is a single character between a and z
 }
 
-if (!check($_GET['s']))
-	$listdata['state'] = NULL;
-else
+if (isset($_GET['s']) && check($_GET['s']))
 	$listdata['state'] = $_GET['s'];
+else
+	$listdata['state'] = NULL;
 
 $layout['pagetitle'] = trans('Manufacturers');
 

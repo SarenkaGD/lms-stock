@@ -60,6 +60,11 @@ if (isset($_POST['receivenote']['product']) && !isset($_GET['action'])) {
 	$itemdata['price']['tax'] = isset($itemdata['price']['taxid']) ? $taxeslist[$itemdata['price']['taxid']]['label'] : '';
 
 	if (!$error) {
+		if (!isset($receivenote['doc']['net']))
+			$receivenote['doc']['net'] = 0;
+		if (!isset($receivenote['doc']['gross']))
+			$receivenote['doc']['gross'] = 0;
+
 		$taxvalue = isset($itemdata['price']['taxid']) ? $taxeslist[$itemdata['price']['taxid']]['value'] : 0;
 		if ((float)$itemdata['price']['net'] > 0) {
 			//$itemdata['price']['net'] = f_round($itemdata['price']['net']);
@@ -69,8 +74,8 @@ if (isset($_POST['receivenote']['product']) && !isset($_GET['action'])) {
 			//$itemdata['price']['gross'] = f_round($itemdata['price']['gross'], 2);
 			$itemdata['price']['net'] = f_round($itemdata['price']['gross'] / ($taxvalue / 100 + 1),2);
 		}
-		 
-		 if ($itemdata['count'] > 1) {
+	
+		if ($itemdata['count'] > 1) {
 		 	$serials = array();
 			$receivenote['doc']['net'] += $itemdata['count']*$itemdata['price']['net'];
 			$receivenote['doc']['gross'] +=  $itemdata['count']*$itemdata['price']['gross'];

@@ -24,10 +24,10 @@ if (isset($_POST['stock'])) {
 	$SESSION->restore('splfl', $stock);
 }
 
-if (!$stock['warehouse'])
+if (!isset($stock['warehouse']) || !$stock['warehouse'])
 	$stock['warehouse'] = $LMSST->WarehouseGetDefaultId();
 
-$productlist = $LMSST->StockList($o, $stock['manufacturer'], $stock['group'], $stock['warehouse']);
+$productlist = $LMSST->StockList($o, (isset($stock['manufacturer']) ? $stock['manufacturer'] : NULL), (isset($stock['group']) ? $stock['group'] : NULL), (isset($stock['warehouse']) ? $stock['warehouse'] : NULL));
 $listdata['total'] = $productlist['total'];
 $listdata['totalvn'] = $productlist['totalvn'];
 $listdata['totalvg'] = $productlist['totalvg'];

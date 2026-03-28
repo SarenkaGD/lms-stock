@@ -15,23 +15,23 @@ else
 
 $SESSION->save('srnlsp', $sprn);
 
-switch ($_GET['action']) {
-	case 'srna':
-		foreach ($_POST['marks'] as $k => $v) {
-			$LMSST->ReceiveNoteAccount($k);
-			//print_r($rn);
-		}
+if (isset($_GET['action']))
+	switch ($_GET['action']) {
+		case 'srna':
+			foreach ($_POST['marks'] as $k => $v) {
+				$LMSST->ReceiveNoteAccount($k);
+			}
 		break;
 	default:
 		break;
-}
+	}
 
 if(!isset($_GET['page']))
         $SESSION->restore('srnlp', $_GET['page']);
 
 $filter['days'] = (!ConfigHelper::getConfig('phpui.receivenotelist_dayslimit') ? 90 : ConfigHelper::getConfig('phpui.receivenotelist_dayslimit'));;//default numer of showed days
 
-if ($_GET['action'] == 'filter') {
+if (isset($_GET['action']) && $_GET['action'] == 'filter') {
 	if (!empty($_POST['customerid']) && $LMS->CustomerExists($_POST['customerid']))
 		$filter['cid'] = $_POST['customerid'];
 	else
@@ -56,7 +56,7 @@ if ($_GET['action'] == 'filter') {
 $page = (! $_GET['page'] ? 1 : $_GET['page']);
 $pagelimit = (!ConfigHelper::getConfig('phpui.receivenotelist_pagelimit') ? 100 : ConfigHelper::getConfig('phpui.receivenotelist_pagelimit'));
 
-$receivenotelist = $LMSST->ReceiveNoteList($o, $pagelimit, $page, $sprn, $filter['cid'], $filter['stckrnn'], $filter['days']);
+$receivenotelist = $LMSST->ReceiveNoteList($o, $pagelimit, $page, $sprn, (isset($filter['cid']) ? $filter['cid'] : NULL), (isset($filter['stckrnn']) ? $filter['stckrnn'] : NULL), (isset($filter['days']) ? $filter['days'] : NULL));
 $listdata['total'] = $receivenotelist['total'];
 $listdata['direction'] = $receivenotelist['direction'];
 $listdata['order'] = $receivenotelist['order'];
