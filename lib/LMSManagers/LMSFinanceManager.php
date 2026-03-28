@@ -2978,11 +2978,11 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 			ic.itemid, ic.taxid, ic.taxrate AS taxvalue, taxes.label AS taxlabel, taxcategory,
 			cash.servicetype,
 			prodid, content, ic.count, ic.description AS description,
-			tariffid, ic.itemid, pdiscount, vdiscount'.(ConfigHelper::getConfig('phpui.stock') ? ' sica.stockid, sca.id as stckcashassid, cash.id as cashid' : '').'
+			tariffid, ic.itemid, pdiscount, vdiscount'.(ConfigHelper::getConfig('phpui.stock') ? ', sica.stockid, sca.id as stckcashassid, cash.id as cashid' : '').'
 			FROM vinvoicecontents ic
 			LEFT JOIN taxes ON taxid = taxes.id
 			LEFT JOIN cash ON cash.docid = ic.docid AND cash.itemid = ic.itemid
-			'.(ConfigHelper::getConfig('phpui.stock') ? 'LEFT JOIN stck_invoicecontentsassignments sica ON sica.icdocid = docid AND sica.icitemid = itemid
+			'.(ConfigHelper::getConfig('phpui.stock') ? 'LEFT JOIN stck_invoicecontentsassignments sica ON sica.icdocid = ic.docid AND sica.icitemid = ic.itemid
 			LEFT JOIN stck_cashassignments sca ON sca.cashid = cash.id AND sca.stockid = sica.stockid' : '').'
 			WHERE ic.docid = ?
 			ORDER BY ic.itemid', 'itemid', array($invoiceid))
