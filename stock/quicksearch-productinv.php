@@ -22,9 +22,6 @@
 					foreach($candidates as $idx => $row) {
 						$name = $row['name'];
 						
-						if ($row['serialnumber'])
-							$name = $name." (S/N: ".trim($row['serialnumber']).")";
-
 						$name_classes = array();
 						$name_class = '';
 
@@ -43,7 +40,10 @@
 						
 						$description_class = '';
 
-						$description .= '('.$row['id'].') '.trans("Bought:")." ".date("d/m/Y", $row['bdate']);
+						if ($row['serialnumber'])
+							$description .= " S/N: ".trim($row['serialnumber'])." ";
+
+						$description .= trans("Bought:")." ".date("d/m/Y", $row['bdate']);
 
 						$result[$row['id']] = compact('name', 'name_class', 'description', 'description_class', 'action','price');
 
