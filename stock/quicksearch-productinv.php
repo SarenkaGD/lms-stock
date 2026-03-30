@@ -22,6 +22,9 @@
 					foreach($candidates as $idx => $row) {
 						$name = $row['name'];
 						
+						if ($row['serialnumber'])
+							$name = $name." (S/N: ".trim($row['serialnumber']).")";
+
 						$name_classes = array();
 						$name_class = '';
 
