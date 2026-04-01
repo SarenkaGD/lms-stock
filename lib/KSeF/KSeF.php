@@ -527,6 +527,9 @@ class KSeF
         $xml .= "\t\t<P_1>" . date('Y-m-d', $invoice['cdate']) . "</P_1>" . PHP_EOL;
         //$xml .= "\t\t<P_1M></P_1M>" . PHP_EOL;
         $xml .= "\t\t<P_2>" . $invoice['fullnumber'] . "</P_2>" . PHP_EOL;
+        if ($invoice['cdate'] != $invoice['sdate']) {
+            $xml .= "\t\t<P_6>" . date('Y-m-d', $invoice['sdate']) . "</P_6>" . PHP_EOL;
+        }
 
         $currency = $invoice['currency'];
         $currencyValue = $invoice['currencyvalue'];
@@ -815,10 +818,13 @@ class KSeF
             $comment = htmlspecialchars($invoice['comment']);
             $commentLines = \Utils::wordWrapToArray($comment, 256);
             foreach ($commentLines as $commentLine) {
-                $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
-                    . "\t\t\t<Klucz>Komentarz</Klucz>" . PHP_EOL
-                    . "\t\t\t<Wartosc>" . $commentLine . "</Wartosc>" . PHP_EOL
-                    . "\t\t</DodatkowyOpis>" . PHP_EOL;
+                $commentLineChunks = preg_split('/\n\r?/', $commentLine, -1, PREG_SPLIT_NO_EMPTY);
+                foreach ($commentLineChunks as $commentLineChunk) {
+                    $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
+                        . "\t\t\t<Klucz>Komentarz</Klucz>" . PHP_EOL
+                        . "\t\t\t<Wartosc>" . $commentLineChunk . "</Wartosc>" . PHP_EOL
+                        . "\t\t</DodatkowyOpis>" . PHP_EOL;
+                }
             }
         }
 
@@ -826,10 +832,13 @@ class KSeF
             $memo = htmlspecialchars($invoice['memo']);
             $memoLines = \Utils::wordWrapToArray($memo, 256);
             foreach ($memoLines as $memoLine) {
-                $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
-                    . "\t\t\t<Klucz>Memo</Klucz>" . PHP_EOL
-                    . "\t\t\t<Wartosc>" . $memoLine . "</Wartosc>" . PHP_EOL
-                    . "\t\t</DodatkowyOpis>" . PHP_EOL;
+                $memoLineChunks = preg_split('/\n\r?/', $memoLine, -1, PREG_SPLIT_NO_EMPTY);
+                foreach ($memoLineChunks as $memoLineChunk) {
+                    $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
+                        . "\t\t\t<Klucz>Memo</Klucz>" . PHP_EOL
+                        . "\t\t\t<Wartosc>" . $memoLineChunk . "</Wartosc>" . PHP_EOL
+                        . "\t\t</DodatkowyOpis>" . PHP_EOL;
+                }
             }
         }
 
@@ -838,9 +847,14 @@ class KSeF
         foreach ($invoice['content'] as $position) {
             $itemId = $position['itemid'];
             if ($invoice['type'] == DOC_CNOTE && !empty($refInvoiceContent[$itemId])) {
+                $description = htmlspecialchars($refInvoiceContent[$itemId]['description']);
+                if (mb_strlen($description) > 512) {
+                    $description = mb_substr($description, 0, 512 - strlen(' [...]')) . ' [...]';
+                }
+
                 $xml .= "\t\t<FaWiersz>" . PHP_EOL;
                 $xml .= "\t\t\t<NrWierszaFa>" . $itemId . "</NrWierszaFa>" . PHP_EOL;
-                $xml .= "\t\t\t<P_7>" . htmlspecialchars($refInvoiceContent[$itemId]['description']) . "</P_7>" . PHP_EOL;
+                $xml .= "\t\t\t<P_7>" . $description . "</P_7>" . PHP_EOL;
                 if (!empty($refInvoiceContent[$itemId]['tariffid'])) {
                     $xml .= "\t\t\t<Indeks>" . $refInvoiceContent[$itemId]['tariffid'] . "</Indeks>" . PHP_EOL;
                 }
@@ -1109,7 +1123,7 @@ class KSeF
     /**
      * Buduje ZIP z listy plików XML. Zwraca [zipBinary, zipBytes].
      */
-    public function makeZipBinaryFromFiles(array $files, int $idx, ?string $debugZipDir = null): array
+    public function makeZipBinaryFromFiles(string $ten, array $files, int $idx, ?string $debugZipDir = null): array
     {
         if (!class_exists(\ZipArchive::class)) {
             throw new \RuntimeException('Brak klasy ZipArchive (ext-zip). Zainstaluj/aktywuj ext-zip.');
@@ -1148,7 +1162,7 @@ class KSeF
 
         if ($debugZipDir) {
             @mkdir($debugZipDir, 0775, true);
-            $dst = rtrim($debugZipDir, '/') . "/batch-{$idx}.zip";
+            $dst = rtrim($debugZipDir, '/') . "/batch-{$ten}-{$idx}.zip";
             file_put_contents($dst, $bin);
         }
 
@@ -1170,7 +1184,7 @@ class KSeF
      *   ...
      * ]
      */
-    public function buildZipPackagesFromXmlDocuments(array $xmlDocuments, int $maxZipBytes, ?string $debugZipDir = null): array
+    public function buildZipPackagesFromXmlDocuments(string $ten, array $xmlDocuments, int $maxZipBytes, ?string $debugZipDir = null): array
     {
         if ($maxZipBytes < 1024 * 1024) {
             throw new \RuntimeException('maxZipBytes jest podejrzanie mały (ustaw co najmniej kilka MB).');
@@ -1230,7 +1244,7 @@ class KSeF
         for ($g = 0; $g < count($preGroups); $g++) {
             $group = $preGroups[$g];
 
-            [$zipBin, $zipBytes] = $this->makeZipBinaryFromFiles($group, $idx, $debugZipDir);
+            [$zipBin, $zipBytes] = $this->makeZipBinaryFromFiles($ten, $group, $idx, $debugZipDir);
 
             if ($zipBytes <= $maxZipBytes) {
                 $packages[] = [
@@ -1260,7 +1274,7 @@ class KSeF
 
             while ($lo <= $hi) {
                 $mid = intdiv($lo + $hi, 2);
-                [$tryBin, $tryBytes] = $this->makeZipBinaryFromFiles(array_slice($group, 0, $mid), $idx, $debugZipDir);
+                [$tryBin, $tryBytes] = $this->makeZipBinaryFromFiles($ten, array_slice($group, 0, $mid), $idx, $debugZipDir);
 
                 if ($tryBytes <= $maxZipBytes) {
                     $bestBin = $tryBin;

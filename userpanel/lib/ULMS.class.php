@@ -277,6 +277,8 @@ class ULMS extends LMS
 
     public function isKsefDocument($docid)
     {
+        $expectedKSeFStatuses = ConfigHelper::checkConfig('ksef.offline_support') ? [0, 200] : [200];
+
         return $this->DB->GetOne(
             'SELECT
                 d.id
@@ -285,27 +287,31 @@ class ULMS extends LMS
             LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.status IN ?
             LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
             WHERE d.id = ?
-                AND EXISTS (SELECT 1 FROM uiconfig WHERE section = ? AND disabled = ? LIMIT 1)
                 AND (
                     d.cdate < ?
                     OR (
-                        kd.status IS NOT NULL
+                        EXISTS (SELECT 1 FROM uiconfig WHERE section = ? AND disabled = ? LIMIT 1)
                         AND (
                             c.type = ?
-                            OR kac.allconsumers = ?
-                            OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ?)
+                            OR (
+                                c.type = ?
+                                AND COALESCE(kac.allconsumers, 0) = ?
+                                AND NOT EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ?)
+                            )
                         )
-                    )
+                    ) OR kd.status IN ?
                 )',
             [
-                ConfigHelper::checkConfig('ksef.offline_support') ? [0, 200] : [200],
+                $expectedKSeFStatuses,
                 $docid,
+                KSeF::getBoundaryDate(),
                 'ksef',
                 0,
-                KSeF::getBoundaryDate(),
                 CTYPES_COMPANY,
-                1,
+                CTYPES_PRIVATE,
+                0,
                 CCONSENT_KSEF_INVOICE,
+                $expectedKSeFStatuses,
             ]
         );
     }
