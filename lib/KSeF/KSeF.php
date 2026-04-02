@@ -442,8 +442,16 @@ class KSeF
         if (!empty($invoice['post_address'])) {
             $xml .= "\t\t<AdresKoresp>" . PHP_EOL;
             $xml .= "\t\t\t<KodKraju>" . $countryCode . "</KodKraju>" . PHP_EOL;
-            $xml .= "\t\t\t<AdresL1>" . htmlspecialchars($invoice['post_address']) . "</AdresL1>" . PHP_EOL;
-            $xml .= "\t\t\t<AdresL2>" . htmlspecialchars((empty($invoice['post_zip']) ? '' : $invoice['post_zip'] . ' ') . $invoice['post_city']) . "</AdresL2>" . PHP_EOL;
+            $xml .= "\t\t\t<AdresL1>"
+                . (empty($invoice['post_address'])
+                    ? '-'
+                    : htmlspecialchars($invoice['post_address'])
+                ) . "</AdresL1>" . PHP_EOL;
+            $xml .= "\t\t\t<AdresL2>"
+                . (empty($invoice['post_zip']) && empty($invoice['post_city'])
+                    ? '-'
+                    : htmlspecialchars((empty($invoice['post_zip']) ? '' : $invoice['post_zip'] . ' ') . $invoice['post_city'])
+                ) . "</AdresL2>" . PHP_EOL;
             $xml .= "\t\t</AdresKoresp>" . PHP_EOL;
         }
 
@@ -498,8 +506,16 @@ class KSeF
 
             $xml .= "\t\t<Adres>" . PHP_EOL;
             $xml .= "\t\t\t<KodKraju>" . $recCountryCode . "</KodKraju>" . PHP_EOL;
-            $xml .= "\t\t\t<AdresL1>" . htmlspecialchars($invoice['rec_address']) . "</AdresL1>" . PHP_EOL;
-            $xml .= "\t\t\t<AdresL2>" . htmlspecialchars((empty($invoice['rec_zip']) ? '' : $invoice['rec_zip'] . ' ') . $invoice['rec_city']) . "</AdresL2>" . PHP_EOL;
+            $xml .= "\t\t\t<AdresL1>"
+                . (empty($invoice['rec_address'])
+                    ? '-'
+                    : htmlspecialchars($invoice['rec_address'])
+                ) . "</AdresL1>" . PHP_EOL;
+            $xml .= "\t\t\t<AdresL2>"
+                . (empty($invoice['rec_zip']) && empty($invoice['rec_city'])
+                    ? '-'
+                    : htmlspecialchars((empty($invoice['rec_zip']) ? '' : $invoice['rec_zip'] . ' ') . $invoice['rec_city'])
+                ) . "</AdresL2>" . PHP_EOL;
             $xml .= "\t\t</Adres>" . PHP_EOL;
 
             switch ($invoice['recipient_type']) {
@@ -820,6 +836,10 @@ class KSeF
             foreach ($commentLines as $commentLine) {
                 $commentLineChunks = preg_split('/\n\r?/', $commentLine, -1, PREG_SPLIT_NO_EMPTY);
                 foreach ($commentLineChunks as $commentLineChunk) {
+                    if (empty($commentLineChunk)) {
+                        continue;
+                    }
+
                     $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
                         . "\t\t\t<Klucz>Komentarz</Klucz>" . PHP_EOL
                         . "\t\t\t<Wartosc>" . $commentLineChunk . "</Wartosc>" . PHP_EOL
@@ -834,6 +854,10 @@ class KSeF
             foreach ($memoLines as $memoLine) {
                 $memoLineChunks = preg_split('/\n\r?/', $memoLine, -1, PREG_SPLIT_NO_EMPTY);
                 foreach ($memoLineChunks as $memoLineChunk) {
+                    if (empty($memoLineChunk)) {
+                        continue;
+                    }
+
                     $xml .= "\t\t<DodatkowyOpis>" . PHP_EOL
                         . "\t\t\t<Klucz>Memo</Klucz>" . PHP_EOL
                         . "\t\t\t<Wartosc>" . $memoLineChunk . "</Wartosc>" . PHP_EOL
@@ -846,6 +870,7 @@ class KSeF
 
         foreach ($invoice['content'] as $position) {
             $itemId = $position['itemid'];
+
             if ($invoice['type'] == DOC_CNOTE && !empty($refInvoiceContent[$itemId])) {
                 $description = htmlspecialchars($refInvoiceContent[$itemId]['description']);
                 if (mb_strlen($description) > 512) {
@@ -910,9 +935,14 @@ class KSeF
                 $xml .= "\t\t</FaWiersz>" . PHP_EOL;
             }
 
+            $description = htmlspecialchars($position['description']);
+            if (mb_strlen($description) > 512) {
+                $description = mb_substr($description, 0, 512 - strlen(' [...]')) . ' [...]';
+            }
+
             $xml .= "\t\t<FaWiersz>" . PHP_EOL;
             $xml .= "\t\t\t<NrWierszaFa>" . $position['itemid'] . "</NrWierszaFa>" . PHP_EOL;
-            $xml .= "\t\t\t<P_7>" . htmlspecialchars($position['description']) . "</P_7>" . PHP_EOL;
+            $xml .= "\t\t\t<P_7>" . $description . "</P_7>" . PHP_EOL;
             if (!empty($position['tariffid'])) {
                 $xml .= "\t\t\t<Indeks>" . $position['tariffid'] . "</Indeks>" . PHP_EOL;
             }

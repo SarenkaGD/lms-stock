@@ -175,6 +175,17 @@
 						</select>
 					</label>
 					<label>
+						{trans("<!ksef>KSeF status")}
+						<select name="ksefstatus">
+							<option value="">{trans("<!ksef-status>- any -")}</option>
+							<option value="1"{if $listdata.ksefstatus == 1} selected{/if}>{trans("<!ksef-status>excluded")}</option>
+							<option value="2"{if $listdata.ksefstatus == 2} selected{/if}>{trans("<!ksef-status>not sent yet")}</option>
+							<option value="3"{if $listdata.ksefstatus == 3} selected{/if}>{trans("<!ksef-status>sent")}</option>
+							<option value="4"{if $listdata.ksefstatus == 4} selected{/if}>{trans("<!ksef-status>error")}</option>
+							<option value="5"{if $listdata.ksefstatus == 5} selected{/if}>{trans("<!ksef-status>assigned number")}</option>
+						</select>
+					</label>
+					<label>
 						<input type="checkbox" name="hideclosed"{if $listdata.hideclosed} checked{/if}>
 						{trans("hide accounted<!plural>")}
 					</label>
@@ -320,7 +331,8 @@
 						{if $invoice.type == $smarty.const.DOC_INVOICE}
 							{if !$invoice.referenced && (!$invoice.published || ConfigHelper::checkPrivilege('published_document_modification'))}
 								{if ConfigHelper::checkPrivilege('finances_management') || ConfigHelper::checkPrivilege('financial_operations')}
-									{if empty($invoice.ksefhash) && empty($invoice.ksefsubmit)}
+									{if empty($invoice.ksefhash) && empty($invoice.ksefsubmit)
+										|| !empty($invoice.ksefstatus) && ($invoice.ksefstatus < 200 || $invoice.ksefstatus >= 300)}
 										{button type="link" icon="edit"
 											href="?m=invoiceedit&id={$invoice.id}&action=edit" class="edit-invoice" tip="Edit"}
 									{/if}
