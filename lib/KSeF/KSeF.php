@@ -78,8 +78,6 @@ class KSeF
 
     private static $docTypes;
 
-    private static $boundaryDate;
-
     private static $identifierTypes = [
         'Nip' => self::IDENTIFIER_TEN,
         'VatUe' => self::IDENTIFIER_VAT_UE,
@@ -151,19 +149,6 @@ class KSeF
 
         $this->showOnlyAlternativeAccounts = \ConfigHelper::checkConfig('invoices.show_only_alternative_accounts');
         $this->showAllAccounts = \ConfigHelper::checkConfig('invoices.show_all_accounts');
-    }
-
-    public static function getBoundaryDate()
-    {
-        if (empty(self::$boundaryDate)) {
-            self::$boundaryDate = \ConfigHelper::getConfig('ksef.boundary_date', '2026/04/01');
-            self::$boundaryDate = strtotime(self::$boundaryDate);
-            if (self::$boundaryDate === false) {
-                self::$boundaryDate = strtotime('2026/04/01');
-            }
-        }
-
-        return self::$boundaryDate;
     }
 
     public function updateDelays(): array
@@ -314,6 +299,169 @@ class KSeF
         }
 
         return \Utils::array_column($divisionAllConsumers, 'allconsumers', 'divisionid');
+    }
+
+    public function updateBoundaryDates(): array
+    {
+        $divisionBoundaryDates = $this->db->GetAllByKey(
+            'SELECT
+                d.id AS divisionid,
+                kbd.id AS boundarydateid,
+                kbd.dt AS dt
+            FROM divisions d
+            LEFT JOIN ksefboundarydates kbd ON kbd.divisionid = d.id
+            ORDER BY d.id',
+            'divisionid'
+        );
+        if (empty($divisionBoundaryDates)) {
+            $divisionBoundaryDates = [];
+        }
+
+        $uiConfigVariables = $this->db->GetAllByKey(
+            'SELECT
+                c.value,
+                COALESCE(c.divisionid, 0) AS divisionid
+            FROM uiconfig c
+            WHERE section = ?
+                AND var = ?
+                AND disabled = ?
+            ORDER BY COALESCE(c.divisionid, 0)',
+            'divisionid',
+            [
+                'ksef',
+                'boundary_date',
+                0,
+            ]
+        );
+        if (empty($uiConfigVariables)) {
+            $uiConfigVariables = [
+                0 => [
+                    'value' => '2026/04/01',
+                ],
+            ];
+        }
+
+        $globalBoundaryDate = isset($uiConfigVariables[0]['value']) ? $uiConfigVariables[0]['value'] : '2026/04/01';
+        $globalBoundaryDate = strtotime($globalBoundaryDate);
+        if ($globalBoundaryDate === false) {
+            $globalBoundaryDate = strtotime('2026/04/01');
+        }
+
+        foreach ($divisionBoundaryDates as $divisionId => $divisionBoundaryDate) {
+            if (isset($uiConfigVariables[$divisionId])) {
+                $boundaryDate = strtotime($uiConfigVariables[$divisionId]['value']);
+                if ($boundaryDate === false) {
+                    $boundaryDate = strtotime('2026/04/01');
+                }
+            } else {
+                $boundaryDate = $globalBoundaryDate;
+            }
+
+            if (empty($divisionBoundaryDates['boundarydateid'])) {
+                $this->db->Execute(
+                    'INSERT INTO ksefboundarydates
+                    (divisionid, dt)
+                    VALUES (?, ?)',
+                    [
+                        empty($divisionId) ? null : $divisionId,
+                        $boundaryDate,
+                    ]
+                );
+                $divisionBoundaryDates[$divisionId]['dt'] = $boundaryDate;
+            } else {
+                if ($divisionBoundaryDate['dt'] != $boundaryDate) {
+                    $this->db->Execute(
+                        'UPDATE ksefboundarydates
+                        SET dt = ?
+                        WHERE id = ?',
+                        [
+                            $boundaryDate,
+                            $divisionBoundaryDate['boundarydateid'],
+                        ]
+                    );
+                    $divisionBoundaryDates[$divisionId]['dt'] = $boundaryDate;
+                }
+            }
+        }
+
+        return \Utils::array_column($divisionBoundaryDates, 'dt', 'divisionid');
+    }
+
+    public function updateShowBalanceSummaries(): array
+    {
+        $divisionShowBalanceSummaries = $this->db->GetAllByKey(
+            'SELECT
+                d.id AS divisionid,
+                ksbs.id AS showbalancesummaryid,
+                ksbs.show AS show
+            FROM divisions d
+            LEFT JOIN ksefshowbalancesummaries ksbs ON ksbs.divisionid = d.id
+            ORDER BY d.id',
+            'divisionid'
+        );
+        if (empty($divisionShowBalanceSummaries)) {
+            $divisionShowBalanceSummaries = [];
+        }
+
+        $uiConfigVariables = $this->db->GetAllByKey(
+            'SELECT
+                c.value,
+                COALESCE(c.divisionid, 0) AS divisionid
+            FROM uiconfig c
+            WHERE section = ?
+                AND var = ?
+                AND disabled = ?
+            ORDER BY COALESCE(c.divisionid, 0)',
+            'divisionid',
+            [
+                'ksef',
+                'show_balance_summary',
+                0,
+            ]
+        );
+        if (empty($uiConfigVariables)) {
+            $uiConfigVariables = [
+                0 => [
+                    'value' => 'false',
+                ],
+            ];
+        }
+
+        $globalShowBalanceSummary = isset($uiConfigVariables[0]['value']) && \ConfigHelper::checkValue($uiConfigVariables[0]['value']) ? 1 : 0;
+
+        foreach ($divisionShowBalanceSummaries as $divisionId => $divisionShowBalanceSummary) {
+            $showBalanceSummary = isset($uiConfigVariables[$divisionId])
+                ? (\ConfigHelper::checkValue($uiConfigVariables[$divisionId]['value']) ? 1 : 0)
+                : $globalShowBalanceSummary;
+
+            if (empty($divisionShowBalanceSummaries['showbalancesummaryid'])) {
+                $this->db->Execute(
+                    'INSERT INTO ksefshowbalancesummaries
+                    (divisionid, show)
+                    VALUES (?, ?)',
+                    [
+                        empty($divisionId) ? null : $divisionId,
+                        $showBalanceSummary,
+                    ]
+                );
+                $divisionShowBalanceSummaries[$divisionId]['show'] = $showBalanceSummary;
+            } else {
+                if ($divisionShowBalanceSummary['show'] != $showBalanceSummary) {
+                    $this->db->Execute(
+                        'UPDATE ksefshowbalancesummaries
+                        SET show = ?
+                        WHERE id = ?',
+                        [
+                            $showBalanceSummary,
+                            $divisionShowBalanceSummary['showbalancesummaryid'],
+                        ]
+                    );
+                    $divisionShowBalanceSummaries[$divisionId]['show'] = $showBalanceSummary;
+                }
+            }
+        }
+
+        return \Utils::array_column($divisionShowBalanceSummaries, 'show', 'divisionid');
     }
 
     public static function base64Url(string $base64Data): string
@@ -1005,64 +1153,66 @@ class KSeF
             $total = $invoice['total'];
         }
 
-        $xml .= "\t\t<Rozliczenie>" . PHP_EOL;
-        if (!empty($balance)) {
-            if ($balance < 0) {
-                $xml .= "\t\t\t<Obciazenia>" . PHP_EOL;
-                $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($balance)) . "</Kwota>" . PHP_EOL;
-                $xml .= "\t\t\t\t<Powod>dotychczasowa niedopłata</Powod>" . PHP_EOL;
-                $xml .= "\t\t\t</Obciazenia>" . PHP_EOL;
-                if ($total > 0) {
+        if (!empty($invoice['showbalancesummary'])) {
+            $xml .= "\t\t<Rozliczenie>" . PHP_EOL;
+            if (!empty($balance)) {
+                if ($balance < 0) {
                     $xml .= "\t\t\t<Obciazenia>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $total) . "</Kwota>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($balance)) . "</Kwota>" . PHP_EOL;
+                    $xml .= "\t\t\t\t<Powod>dotychczasowa niedopłata</Powod>" . PHP_EOL;
                     $xml .= "\t\t\t</Obciazenia>" . PHP_EOL;
-                    $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', abs($balance - $total)) . "</SumaObciazen>" . PHP_EOL;
+                    if ($total > 0) {
+                        $xml .= "\t\t\t<Obciazenia>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $total) . "</Kwota>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                        $xml .= "\t\t\t</Obciazenia>" . PHP_EOL;
+                        $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', abs($balance - $total)) . "</SumaObciazen>" . PHP_EOL;
+                    } else {
+                        $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', abs($balance)) . "</SumaObciazen>" . PHP_EOL;
+                    }
+                    if ($total < 0) {
+                        $xml .= "\t\t\t<Odliczenia>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($total)) . "</Kwota>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                        $xml .= "\t\t\t</Odliczenia>" . PHP_EOL;
+                        $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($total)) . "</SumaOdliczen>" . PHP_EOL;
+                    } else {
+                        $xml .= "\t\t\t<SumaOdliczen>0.00</SumaOdliczen>" . PHP_EOL;
+                    }
+                    $balance -= $total;
                 } else {
-                    $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', abs($balance)) . "</SumaObciazen>" . PHP_EOL;
-                }
-                if ($total < 0) {
+                    if ($total > 0) {
+                        $xml .= "\t\t\t<Obciazenia>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $total) . "</Kwota>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                        $xml .= "\t\t\t</Obciazenia>" . PHP_EOL;
+                        $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', $total) . "</SumaObciazen>" . PHP_EOL;
+                    } else {
+                        $xml .= "\t\t\t<SumaObciazen>0.00</SumaObciazen>" . PHP_EOL;
+                    }
                     $xml .= "\t\t\t<Odliczenia>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($total)) . "</Kwota>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $balance) . "</Kwota>" . PHP_EOL;
+                    $xml .= "\t\t\t\t<Powod>dotychczasowa nadpłata</Powod>" . PHP_EOL;
                     $xml .= "\t\t\t</Odliczenia>" . PHP_EOL;
-                    $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($total)) . "</SumaOdliczen>" . PHP_EOL;
-                } else {
-                    $xml .= "\t\t\t<SumaOdliczen>0.00</SumaOdliczen>" . PHP_EOL;
+                    if ($total < 0) {
+                        $xml .= "\t\t\t<Odliczenia>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($total)) . "</Kwota>" . PHP_EOL;
+                        $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
+                        $xml .= "\t\t\t</Odliczenia>" . PHP_EOL;
+                        $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($balance - $total)) . "</SumaOdliczen>" . PHP_EOL;
+                    } else {
+                        $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($balance)) . "</SumaOdliczen>" . PHP_EOL;
+                    }
+                    $balance -= $total;
                 }
-                $balance -= $total;
-            } else {
-                if ($total > 0) {
-                    $xml .= "\t\t\t<Obciazenia>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $total) . "</Kwota>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
-                    $xml .= "\t\t\t</Obciazenia>" . PHP_EOL;
-                    $xml .= "\t\t\t<SumaObciazen>" . sprintf('%.2f', $total) . "</SumaObciazen>" . PHP_EOL;
+                if ($balance >= 0) {
+                    $xml .= "\t\t\t<DoRozliczenia>" . sprintf('%.2f', $balance) . "</DoRozliczenia>" . PHP_EOL;
                 } else {
-                    $xml .= "\t\t\t<SumaObciazen>0.00</SumaObciazen>" . PHP_EOL;
+                    $xml .= "\t\t\t<DoZaplaty>" . sprintf('%.2f', abs($balance)) . "</DoZaplaty>" . PHP_EOL;
                 }
-                $xml .= "\t\t\t<Odliczenia>" . PHP_EOL;
-                $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', $balance) . "</Kwota>" . PHP_EOL;
-                $xml .= "\t\t\t\t<Powod>dotychczasowa nadpłata</Powod>" . PHP_EOL;
-                $xml .= "\t\t\t</Odliczenia>" . PHP_EOL;
-                if ($total < 0) {
-                    $xml .= "\t\t\t<Odliczenia>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Kwota>" . sprintf('%.2f', abs($total)) . "</Kwota>" . PHP_EOL;
-                    $xml .= "\t\t\t\t<Powod>dokument " . $invoice['fullnumber'] . "</Powod>" . PHP_EOL;
-                    $xml .= "\t\t\t</Odliczenia>" . PHP_EOL;
-                    $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($balance - $total)) . "</SumaOdliczen>" . PHP_EOL;
-                } else {
-                    $xml .= "\t\t\t<SumaOdliczen>" . sprintf('%.2f', abs($balance)) . "</SumaOdliczen>" . PHP_EOL;
-                }
-                $balance -= $total;
             }
-            if ($balance >= 0) {
-                $xml .= "\t\t\t<DoRozliczenia>" . sprintf('%.2f', $balance) . "</DoRozliczenia>" . PHP_EOL;
-            } else {
-                $xml .= "\t\t\t<DoZaplaty>" . sprintf('%.2f', abs($balance)) . "</DoZaplaty>" . PHP_EOL;
-            }
+            $xml .= "\t\t</Rozliczenie>" . PHP_EOL;
         }
-        $xml .= "\t\t</Rozliczenie>" . PHP_EOL;
 
         $xml .= "\t\t<Platnosc>" . PHP_EOL;
         $xml .= "\t\t\t<TerminPlatnosci>" . PHP_EOL;
@@ -2038,13 +2188,12 @@ class KSeF
             FROM ksefdocuments kd
             JOIN ksefbatchsessions kbs ON kbs.id = kd.batchsessionid
             JOIN documents d ON d.id = kd.docid
-            WHERE d.cdate >= ?
+            JOIN ksefboundarydates kbd ON kbd.divisionid = d.divisionid
+            WHERE d.cdate >= kbd.dt
                 AND kbs.environment = ?
                 AND kd.status = ?
             GROUP BY d.divisionid, d.div_ten',
             [
-                self::getBoundaryDate(),
-                //KSeF::ENVIRONMENT_TEST,
                 KSeF::ENVIRONMENT_PROD,
                 200,
             ]
