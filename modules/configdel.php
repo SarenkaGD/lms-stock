@@ -37,16 +37,10 @@ if (isset($_GET['id'])) {
 
             switch ($configVariable['var']) {
                 case 'delay':
-                    $ksef->updateDelays();
-                    break;
                 case 'all_consumers':
-                    $ksef->updateAllConsumers();
-                    break;
                 case 'boundary_date':
-                    $ksef->updateBoundaryDates();
-                    break;
                 case 'show_balance_summary':
-                    $ksef->updateShowBalanceSummaries();
+                    $ksef->updateConfig();
                     break;
             }
         }
@@ -60,40 +54,23 @@ if (isset($_GET['id'])) {
         }
         $DB->CommitTrans();
 
-        $updateDelaysRequired = $updateAllConsumersRequired = $updateBoundaryDatesRequired = $updateShowBalanceSummariesRequired = false;
+        $ksefConfigUpdateRequired = false;
         foreach ($options as $option) {
             $configVariable = $LMS->GetConfigVariable($option);
             if ($configVariable['section'] == 'ksef') {
                 switch ($configVariable['var']) {
                     case 'delay':
-                        $updateDelaysRequired = true;
-                        break;
                     case 'all_consumers':
-                        $updateAllConsumersRequired = true;
-                        break;
                     case 'boundary_date':
-                        $updateBoundaryDatesRequired = true;
-                        break;
                     case 'show_balance_summary':
-                        $updateShowBalanceSummariesRequired = true;
+                        $ksefConfigUpdateRequired = true;
                         break;
                 }
             }
         }
-        if ($updateDelaysRequired || $updateAllConsumersRequired || $updateBoundaryDatesRequired || $updateShowBalanceSummariesRequired) {
+        if ($ksefConfigUpdateRequired) {
             $ksef = new \Lms\KSeF\KSeF($DB, $LMS);
-            if ($updateDelaysRequired) {
-                $ksef->updateDelays();
-            }
-            if ($updateAllConsumersRequired) {
-                $ksef->updateAllConsumers();
-            }
-            if ($updateBoundaryDatesRequired) {
-                $ksef->updateBoundaryDates();
-            }
-            if ($updateShowBalanceSummariesRequired) {
-                $ksef->updateShowBalanceSummaries();
-            }
+            $ksef->updateConfig();
         }
     }
 }

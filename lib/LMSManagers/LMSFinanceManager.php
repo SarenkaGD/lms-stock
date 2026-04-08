@@ -2226,21 +2226,21 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                     $where .= '
                         AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
                         AND (
-                            (d.cdate < kbd.dt OR kbd.dt IS NULL)
+                            (d.cdate < kc.boundarydate OR kc.boundarydate IS NULL)
                             OR (
                                 c.type <> ' . CTYPES_COMPANY . '
-                                AND COALESCE(kac.allconsumers, 0) = 0
+                                AND COALESCE(kc.allconsumers, 0) = 0
                                 AND NOT EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
                             )
                         )';
                     break;
                 case 2:
-                    $where .= ' AND (d.cdate >= kbd.dt OR kbd.dt IS NULL)
+                    $where .= ' AND (d.cdate >= kc.boundarydate OR kc.boundarydate IS NULL)
                         AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
                         AND kd.status IS NULL
                         AND (
                             c.type = ' . CTYPES_COMPANY . '
-                            OR kac.allconsumers = 1
+                            OR kc.allconsumers = 1
                             OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
                         )';
                     break;
@@ -2270,8 +2270,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 ) kd2 ON kd2.docid = d.id
                 JOIN customers c ON c.id = d.customerid
                 LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.id = kd2.maxid
-                LEFT JOIN ksefdelays kdl ON kdl.divisionid = d.divisionid
-                LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid'
+                LEFT JOIN ksefconfig kc ON kc.divisionid = d.divisionid'
                 . ($join_cash ?
                     ' JOIN invoicecontents a ON (a.docid = d.id)
                     LEFT JOIN cash ON cash.docid = d.id AND cash.itemid = a.itemid'
@@ -2328,26 +2327,26 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 kd.statusdetails AS ksefstatusdetails,
                 kd.hash AS ksefhash,
                 kd.ksefnumber AS ksefnumber,
-                kdl.delay AS ksefdelay,
+                kc.delay AS ksefdelay,
                 (CASE
-                    WHEN d.cdate >= kbd.dt
-                        AND kdl.delay > -1
-                        AND ?NOW? - d.cdate >= kdl.delay
+                    WHEN d.cdate >= kc.boundarydate
+                        AND kc.delay > -1
+                        AND ?NOW? - d.cdate >= kc.delay
                         AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
                         AND (
                             c.type = ' . CTYPES_COMPANY . '
-                            OR kac.allconsumers = 1
+                            OR kc.allconsumers = 1
                             OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
                         )
                     THEN 1
                     ELSE 0
                 END) AS ksefsubmit,
                 (CASE
-                    WHEN d.cdate >= kbd.dt
+                    WHEN d.cdate >= kc.boundarydate
                         AND d.type IN (' . implode(',', [DOC_INVOICE, DOC_CNOTE]) . ')
                         AND (
                             c.type = ' . CTYPES_COMPANY . '
-                            OR kac.allconsumers = 1
+                            OR kc.allconsumers = 1
                             OR EXISTS (SELECT 1 FROM customerconsents cc WHERE cc.customerid = d.customerid AND cc.type = ' . CCONSENT_KSEF_INVOICE . ')
                         )
                     THEN 1
@@ -2362,9 +2361,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 GROUP BY kd.docid
             ) kd2 ON kd2.docid = d.id
             LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.id = kd2.maxid
-            LEFT JOIN ksefdelays kdl ON kdl.divisionid = d.divisionid
-            LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
-            LEFT JOIN ksefboundarydates kbd ON kbd.divisionid = d.divisionid
+            LEFT JOIN ksefconfig kc ON kc.divisionid = d.divisionid
             JOIN vinvoicecontents a ON (a.docid = d.id)'
             . (empty($userid) ? '' : ' JOIN userdivisions ud ON ud.divisionid = d.divisionid AND ud.userid = ' . $userid)
             . ' LEFT JOIN cash ON cash.docid = d.id AND a.itemid = cash.itemid
@@ -2403,7 +2400,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             . ' GROUP BY d.id, d2.id, d.number, d.cdate, d.customerid,
                     d.name, d.address, d.zip, d.city, numberplans.template, d.closed, d.type, d.reference, countries.name,
                     d.cancelled, d.published, sendinvoices, d.archived, d.senddate, d.currency, d.currencyvalue,
-                    kd.status, kd.statusdescription, kd.statusdetails, kd.hash, kd.ksefnumber, kdl.delay, kac.allconsumers, c.type '
+                    kd.status, kd.statusdescription, kd.statusdetails, kd.hash, kd.ksefnumber, kc.delay, kc.allconsumers, kc.boundarydate, c.type '
             . ($having ?? '')
             . $sqlord.' '.$direction
             . (isset($limit) ? ' LIMIT ' . $limit : '')
@@ -2798,13 +2795,13 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 				d.extid,
                 c.type AS customertype,
 				(CASE WHEN cc.type IS NULL THEN 0 ELSE 1 END) AS balance_on_documents,
-				(CASE WHEN kac.allconsumers = 1 OR cc2.type IS NOT NULL THEN 1 ELSE 0 END) AS ksef_invoice_consent,
+				(CASE WHEN kc.allconsumers = 1 OR cc2.type IS NOT NULL THEN 1 ELSE 0 END) AS ksef_invoice_consent,
                     kd.ksefnumber,
                     kd.status AS ksefstatus,
                     kd.hash AS ksefhash,
                     kbs.environment AS ksefenvironment,
-                    kbd.dt AS ksefboundarydate,
-                    ksbs.show AS ksefshowbalancesummary
+                    kc.boundarydate AS ksefboundarydate,
+                    kc.showbalancesummary AS ksefshowbalancesummary
 				FROM documents d'
                 . (empty($userid) ? '' : ' JOIN userdivisions ud ON ud.divisionid = d.divisionid AND ud.userid = ' . $userid)
                 . '
@@ -2813,9 +2810,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 				LEFT JOIN vusers u ON u.id = d.userid
 				LEFT JOIN customerconsents cc ON cc.customerid = d.customerid AND cc.type = ?
 				LEFT JOIN customerconsents cc2 ON cc2.customerid = d.customerid AND cc2.type = ?
-				LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
-				LEFT JOIN ksefboundarydates kbd ON kbd.divisionid = d.divisionid
-				LEFT JOIN ksefshowbalancesumaries ksbs ON ksbs.divisionid = d.divisionid
+				LEFT JOIN ksefconfig kc ON kc.divisionid = d.divisionid
 				LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.status IN ?
 				LEFT JOIN ksefbatchsessions kbs ON kbs.id = kd.batchsessionid
 				WHERE d.id = ? AND (d.type = ? OR d.type = ? OR d.type = ?)',
@@ -2885,13 +2880,13 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 				d.currency, d.currencyvalue, d.memo,
 				d.extid,
 				(CASE WHEN cc.type IS NULL THEN 0 ELSE 1 END) AS balance_on_documents,
-				(CASE WHEN kac.allconsumers = 1 OR cc2.type IS NOT NULL THEN 1 ELSE 0 END) AS ksef_invoice_consent,
+				(CASE WHEN kc.allconsumers = 1 OR cc2.type IS NOT NULL THEN 1 ELSE 0 END) AS ksef_invoice_consent,
                     kd.ksefnumber,
                     kd.status AS ksefstatus,
                     kd.hash AS ksefhash,
-                    kbs.environment AS ksefenvironment
-                    kbd.dt AS ksefboundarydate,
-                    ksbs.show AS ksefshowbalancesummary
+                    kbs.environment AS ksefenvironment,
+                    kc.boundarydate AS ksefboundarydate,
+                    kc.showbalancesummary AS ksefshowbalancesummary
 				FROM documents d'
                 . (empty($userid) ? '' : ' JOIN userdivisions ud ON ud.divisionid = d.divisionid AND ud.userid = ' . $userid)
                 . ' LEFT JOIN customeraddressview c ON (c.id = d.customerid)
@@ -2904,9 +2899,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 				LEFT JOIN vaddresses a ON d.recipient_address_id = a.id
 				LEFT JOIN vaddresses a2 ON d.post_address_id = a2.id
 				LEFT JOIN countries cp ON (d.post_address_id IS NOT NULL AND cp.id = a2.country_id) OR (d.post_address_id IS NULL AND cp.id = c.post_countryid)
-				LEFT JOIN ksefallconsumers kac ON kac.divisionid = d.divisionid
-				LEFT JOIN ksefboundarydates kbd ON kbd.divisionid = d.divisionid
-				LEFT JOIN ksefshowbalancesumaries ksbs ON ksbs.divisionid = d.divisionid
+				LEFT JOIN ksefconfig kc ON kc.divisionid = d.divisionid
 				LEFT JOIN ksefdocuments kd ON kd.docid = d.id AND kd.status IN ?
 				LEFT JOIN ksefbatchsessions kbs ON kbs.id = kd.batchsessionid
 				WHERE d.id = ? AND (d.type = ? OR d.type = ? OR d.type = ?)',
@@ -4179,12 +4172,12 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 kd.status AS ksefstatus,
                 kd.hash AS ksefhash,
                 kd.ksefnumber AS ksefnumber,
-                kdl.delay AS ksefdelay
+                kc.delay AS ksefdelay
 				FROM cash
 				LEFT JOIN customerview c ON (cash.customerid = c.id)
 				LEFT JOIN documents ON (documents.id = cash.docid)
                 LEFT JOIN ksefdocuments kd ON kd.docid = documents.id AND kd.status IN (' . implode(',', [0, 200]) . ')
-                LEFT JOIN ksefdelays kdl ON kdl.divisionid = documents.divisionid
+                LEFT JOIN ksefconfig kc ON kc.divisionid = documents.divisionid
 				WHERE 1=1 '
             .$where
             .(!empty($group) ?

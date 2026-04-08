@@ -23,19 +23,6 @@
 
 $this->BeginTrans();
 
-if (!$this->ResourceExists('ksefboundarydates', LMSDB::RESOURCE_TYPE_TABLE)) {
-    $this->Execute("
-        CREATE TABLE ksefboundarydates (
-            id int(11) NOT NULL AUTO_INCREMENT,
-            divisionid int(11) NOT NULL,
-            dt int(16) NOT NULL,
-            PRIMARY KEY (id),
-            CONSTRAINT ksefboundarydates_divisionid_fkey
-                FOREIGN KEY (divisionid) REFERENCES divisions (id) ON DELETE CASCADE ON UPDATE CASCADE,
-        ) ENGINE=InnoDB
-    ");
-}
-
 if (!$this->ResourceExists('ksefshowbalancesummaries', LMSDB::RESOURCE_TYPE_TABLE)) {
     $this->Execute("
         CREATE TABLE ksefshowbalancesummaries (
@@ -49,6 +36,6 @@ if (!$this->ResourceExists('ksefshowbalancesummaries', LMSDB::RESOURCE_TYPE_TABL
     ");
 }
 
-$this->Execute("UPDATE dbinfo SET keyvalue = ? WHERE keytype = ?", array('2026040700', 'dbversion'));
+$this->Execute("UPDATE dbinfo SET keyvalue = ? WHERE keytype = ?", array('2026040701', 'dbversion'));
 
 $this->CommitTrans();
