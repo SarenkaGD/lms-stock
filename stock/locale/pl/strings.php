@@ -135,6 +135,7 @@ $_LANG['Product not in databse'] = 'Brak produktu w bazie danych';
 $_LANG['Settlement date'] = 'Data wystawienia';
 $_LANG['Creation date'] = 'Data utworzenia';
 $_LANG['Payment type'] = 'Typ płatności';
+$_LANG['Payment date:'] = 'Data płatności:';
 $_LANG['Paid'] = 'Zapłacono';
 $_LANG['Time period'] = 'Okres czasu';
 $_LANG['Do you confirm the withdrawal of the product sale operation?'] = 'Czy potwierdzasz wycofanie operacji psrzedaży produktu?';

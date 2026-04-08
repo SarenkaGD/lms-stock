@@ -1235,6 +1235,8 @@ class LMSStck {
 	}
 
 	function ReceiveNoteAccount($id) {
+		global $PAYTYPES;
+
 		$this->DB->BeginTrans();
 		$rn = $this->DB->GetRow('SELECT id, grossvalue, supplierid, number, paytype, paid FROM stck_receivenotes WHERE id = ?', array($id));
 		if (!$rn['paid']) {
@@ -1242,13 +1244,13 @@ class LMSStck {
 				'value' => $rn['grossvalue']*-1,
 				'customerid' => $rn['supplierid'],
 				'type' => 1,
-				'comment' => $rn['number']." - ".$PAYTYPES[$rn['paytype']]
+				'comment' => $rn['number']." - ".trans($PAYTYPES[$rn['paytype']]['label'])
 			));
 			$cid = $this->DB->GetLastInsertID('cash');
 			$this->DB->Execute('INSERT INTO stck_receivennotesassignment (rnid, cashid) VALUE(?, ?)', array($id, $cid));
-			$this->DB->Execute('UPDATE stck_receivenotes SET paid = 1 WHERE id = ?', array($id));
-			$this->DB->CommitTrans();
+			$this->DB->Execute('UPDATE stck_receivenotes SET paid = 1, moddate  = ?NOW?, modid = ?, paymentday = ?NOW? WHERE id = ?', array(Auth::GetCurrentUser(), $id));
 		}
+		$this->DB->CommitTrans();
 	}
 
 	function GTUCodeList($params) {

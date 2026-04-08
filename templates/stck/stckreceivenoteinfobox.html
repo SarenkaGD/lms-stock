@@ -116,6 +116,17 @@
 									{$paytypes[$receivenoteinfo.paytype]}
 								</TD>
 							</TR>
+							<TR>
+								{if $receivenoteinfo.paid}true{else}false{/if}
+								<TD WIDTH="1%">
+									<IMG SRC="img/money.gif" ALT="">
+								</TD>
+								<TD WIDTH="1%" NOWRAP>
+									<B>{t}Payment date:{/t}
+								<TD WIDTH="98%">
+									{if $receivenoteinfo.paid}{$receivenoteinfo.paymentday|date_format: "%Y/%m/%d"}{else}-{/if}
+								</TD>
+							</TR>
 	                        		</TABLE>
 					</TD>
 					<TD WIDTH="50%" style="vertical-align:top;">
