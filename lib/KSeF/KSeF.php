@@ -945,9 +945,11 @@ class KSeF
             $xml .= "\t\t<FaWiersz>" . PHP_EOL;
             $xml .= "\t\t\t<NrWierszaFa>" . $position['itemid'] . "</NrWierszaFa>" . PHP_EOL;
             $xml .= "\t\t\t<P_7>" . $description . "</P_7>" . PHP_EOL;
+/*
             if (!empty($position['tariffid'])) {
                 $xml .= "\t\t\t<Indeks>" . $position['tariffid'] . "</Indeks>" . PHP_EOL;
             }
+*/
             if (!empty($position['prodid'])) {
                 $xml .= "\t\t\t<PKWiU>" . $position['prodid'] . "</PKWiU>" . PHP_EOL;
             }
@@ -1079,18 +1081,28 @@ class KSeF
             $xml .= "\t\t\t<FormaPlatnosci>" . $this->payTypes[$invoice['paytype']] . "</FormaPlatnosci>" . PHP_EOL;
         }
 
+        $bank = null;
         if (!$this->showOnlyAlternativeAccounts || empty($invoice['bankaccounts'])) {
             $accounts = array(bankaccount($invoice['customerid'], $invoice['account'], $invoice['export']));
+            if (!empty($invoice['division_bank'])) {
+                $bank = $invoice['division_bank'];
+            }
         } else {
             $accounts = array();
         }
         if ($this->showAllAccounts || $this->showOnlyAlternativeAccounts) {
             $accounts = array_merge($accounts, $invoice['bankaccounts']);
+            if (!empty($invoice['bankaccounts'])) {
+                $bank = null;
+            }
         }
         foreach ($accounts as $account) {
             $xml .= "\t\t\t<RachunekBankowy>" . PHP_EOL;
             //$xml .= "\t\t\t\t<NrRB>". format_bankaccount($account, $invoice['export']) . "</NrRB>" . PHP_EOL;
             $xml .= "\t\t\t\t<NrRB>". $account . "</NrRB>" . PHP_EOL;
+            if (isset($bank)) {
+                $xml .= "\t\t\t\t<NazwaBanku>" . htmlspecialchars($bank) . "</NazwaBanku>" . PHP_EOL;
+            }
             $xml .= "\t\t\t</RachunekBankowy>" . PHP_EOL;
         }
         unset($account);
@@ -2023,7 +2035,7 @@ class KSeF
         }
     }
 
-    public static function getCertificatePassword(int $type = self::CERTIFICATE_TYPE_ONLINE): string
+    public static function getCertificatePassword(int $type = self::CERTIFICATE_TYPE_ONLINE): ?string
     {
         return $type == self::CERTIFICATE_TYPE_OFFLINE
             ? \ConfigHelper::getConfig('ksef.offline_password')
