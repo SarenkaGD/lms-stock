@@ -416,12 +416,15 @@ class KSeF
                 } else {
                     $foreign = true;
                 }
-            } elseif (!empty($invoice['countryid']) && !empty($invoice['division_countryid']) && $invoice['countryid'] != $invoice['division_countryid']) {
+            }
+/*
+             elseif (!empty($invoice['countryid']) && !empty($invoice['division_countryid']) && $invoice['countryid'] != $invoice['division_countryid']) {
                 //$foreign = true;
                 return [
                     'error' => 'Invalid Tax Exempt No. format: \'' . $invoice['ten'] . '\'',
                 ];
             }
+*/
         }
 
         $xml .= "\t<Podmiot2>" . PHP_EOL;
@@ -1131,9 +1134,12 @@ class KSeF
                 $tmp
             );
 
-            $footerXml .= "\t\t<Informacje>" . PHP_EOL;
-            $footerXml .= "\t\t\t<StopkaFaktury>" . htmlspecialchars(\Utils::removeHtml($tmp)) . "</StopkaFaktury>" . PHP_EOL;
-            $footerXml .= "\t\t</Informacje>" . PHP_EOL;
+            $tmp = trim(htmlspecialchars(\Utils::removeHtml($tmp)));
+            if (strlen($tmp)) {
+                $footerXml .= "\t\t<Informacje>" . PHP_EOL;
+                $footerXml .= "\t\t\t<StopkaFaktury>" . htmlspecialchars(\Utils::removeHtml($tmp)) . "</StopkaFaktury>" . PHP_EOL;
+                $footerXml .= "\t\t</Informacje>" . PHP_EOL;
+            }
         }
 
         $registryXml = '';
