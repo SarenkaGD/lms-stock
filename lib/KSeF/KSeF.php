@@ -125,6 +125,8 @@ class KSeF
     private $showOnlyAlternativeAccounts;
     private $showAllAccounts;
 
+    private $smartNumberFormatter;
+
     public function __construct($db, $lms)
     {
         $this->db = $db;
@@ -367,6 +369,18 @@ class KSeF
         return substr($internalId, 0, 10) . '-' . substr($internalId, 10);
     }
 
+    private function smartFormatNumber($number)
+    {
+        if (empty($this->smartNumberFormatter)) {
+            $this->smartNumberFormatter = new \NumberFormatter('en_US', \NumberFormatter::DECIMAL);
+            $this->smartNumberFormatter->setAttribute(\NumberFormatter::MIN_FRACTION_DIGITS, 2);
+            $this->smartNumberFormatter->setAttribute(\NumberFormatter::MAX_FRACTION_DIGITS, 8);
+            $this->smartNumberFormatter->setAttribute(\NumberFormatter::GROUPING_USED, false);
+        }
+
+        return $this->smartNumberFormatter->format($number ?? 0);
+    }
+
     public function getInvoiceXml(array $invoice)
     {
         if (!isset($this->divisions[$invoice['divisionid']])) {
@@ -448,7 +462,14 @@ class KSeF
         $xml .= "\t\t</DaneIdentyfikacyjne>" . PHP_EOL;
 
         $xml .= "\t\t<Adres>" . PHP_EOL;
-        $xml .= "\t\t\t<KodKraju>" . (empty($m['country']) ? 'PL' : $m['country']) . "</KodKraju>" . PHP_EOL;
+
+        if (!empty($invoice['countryid']) && isset($this->countries[$invoice['countryid']])) {
+            $countryCode = substr($this->countries[$invoice['countryid']]['ccode'], 3);
+        } else {
+            $countryCode = 'PL';
+        }
+        $xml .= "\t\t\t<KodKraju>" . $countryCode . "</KodKraju>" . PHP_EOL;
+
         $xml .= "\t\t\t<AdresL1>"
             . (empty($invoice['address'])
                 ? '-'
@@ -799,7 +820,7 @@ class KSeF
         }
 
         if ($currency != $this->defaultCurrency) {
-            $xml .= "\t\t<KursWalutyZ>" . sprintf('%.6f', $currencyValue) . "</KursWalutyZ>" . PHP_EOL;
+            $xml .= "\t\t<KursWalutyZ>" . $this->smartFormatNumber($currencyValue) . "</KursWalutyZ>" . PHP_EOL;
         }
 
         $xml .= "\t\t<Adnotacje>" . PHP_EOL;
@@ -919,11 +940,11 @@ class KSeF
                     $xml .= "\t\t\t<P_8A>" . $refInvoiceContent[$itemId]['content'] . "</P_8A>" . PHP_EOL;
                 }
 
-                $xml .= "\t\t\t<P_8B>" . sprintf('%.6f', $refInvoiceContent[$itemId]['count']) . "</P_8B>" . PHP_EOL;
+                $xml .= "\t\t\t<P_8B>" . $this->smartFormatNumber($refInvoiceContent[$itemId]['count']) . "</P_8B>" . PHP_EOL;
                 if (empty($invoice['netflag'])) {
-                    $xml .= "\t\t\t<P_9B>" . sprintf('%.6f', $refInvoiceContent[$itemId]['grossprice']) . "</P_9B>" . PHP_EOL;
+                    $xml .= "\t\t\t<P_9B>" . $this->smartFormatNumber($refInvoiceContent[$itemId]['grossprice']) . "</P_9B>" . PHP_EOL;
                 } else {
-                    $xml .= "\t\t\t<P_9A>" . sprintf('%.6f', $refInvoiceContent[$itemId]['netprice']) . "</P_9A>" . PHP_EOL;
+                    $xml .= "\t\t\t<P_9A>" . $this->smartFormatNumber($refInvoiceContent[$itemId]['netprice']) . "</P_9A>" . PHP_EOL;
                 }
                 if (empty($invoice['netflag'])) {
                     $xml .= "\t\t\t<P_11A>" . sprintf('%.2f', $refInvoiceContent[$itemId]['total']) . "</P_11A>" . PHP_EOL;
@@ -957,7 +978,7 @@ class KSeF
                 }
 
                 if ($currency != $this->defaultCurrency) {
-                    $xml .= "\t\t\t<KursWaluty>" . sprintf('%.6f', $currencyValue) . "</KursWaluty>" . PHP_EOL;
+                    $xml .= "\t\t\t<KursWaluty>" . $this->smartFormatNumber($currencyValue) . "</KursWaluty>" . PHP_EOL;
                 }
 
                 $xml .= "\t\t\t<StanPrzed>1</StanPrzed>" . PHP_EOL;
@@ -984,11 +1005,11 @@ class KSeF
                 $xml .= "\t\t\t<P_8A>" . $position['content'] . "</P_8A>" . PHP_EOL;
             }
 
-            $xml .= "\t\t\t<P_8B>" . sprintf('%.6f', $position['count']) . "</P_8B>" . PHP_EOL;
+            $xml .= "\t\t\t<P_8B>" . $this->smartFormatNumber($position['count']) . "</P_8B>" . PHP_EOL;
             if (empty($invoice['netflag'])) {
-                $xml .= "\t\t\t<P_9B>" . sprintf('%.6f', $position['grossprice']) . "</P_9B>" . PHP_EOL;
+                $xml .= "\t\t\t<P_9B>" . $this->smartFormatNumber($position['grossprice']) . "</P_9B>" . PHP_EOL;
             } else {
-                $xml .= "\t\t\t<P_9A>" . sprintf('%.6f', $position['netprice']) . "</P_9A>" . PHP_EOL;
+                $xml .= "\t\t\t<P_9A>" . $this->smartFormatNumber($position['netprice']) . "</P_9A>" . PHP_EOL;
             }
             if (empty($invoice['netflag'])) {
                 if (!empty($invoice['ksefxmladdallvalues'])) {
@@ -1028,7 +1049,7 @@ class KSeF
             }
 
             if ($currency != $this->defaultCurrency) {
-                $xml .= "\t\t\t<KursWaluty>" . sprintf('%.6f', $currencyValue) . "</KursWaluty>" . PHP_EOL;
+                $xml .= "\t\t\t<KursWaluty>" . $this->smartFormatNumber($currencyValue) . "</KursWaluty>" . PHP_EOL;
             }
             $xml .= "\t\t</FaWiersz>" . PHP_EOL;
         }
