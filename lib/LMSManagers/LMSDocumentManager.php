@@ -2428,7 +2428,7 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
         }
 
         $finance_manager = new LMSFinanceManager($this->db, $this->auth, $this->cache, $this->syslog);
-        if ($document['doctype'] == DOC_CNOTE) {
+        if ($document['doctype'] == DOC_DNOTE) {
             $data = $finance_manager->GetNoteContent($docid);
         } else {
             $data = $finance_manager->GetInvoiceContent($docid);
@@ -3914,6 +3914,23 @@ class LMSDocumentManager extends LMSManager implements LMSDocumentManagerInterfa
     public function getDocumentFullNumber($docid)
     {
         return $this->db->GetOne('SELECT fullnumber FROM documents WHERE id = ?', array($docid));
+    }
+
+    public function checkDocumentPermission($docType, $permission)
+    {
+        $permission = $this->db->GetOne(
+            'SELECT 1 FROM docrights r
+            WHERE r.doctype = ?
+                AND r.userid = ?
+                AND (r.rights & ?) > 0',
+            [
+                $docType,
+                Auth::GetCurrentUser(),
+                $permission,
+            ]
+        );
+
+        return !empty($permission);
     }
 
     public function isKsefDocument($docid)

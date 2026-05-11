@@ -823,6 +823,7 @@ CREATE TABLE voip_cdr (
 	caller varchar(20) NOT NULL,
 	callee varchar(20) NOT NULL,
 	call_start_time bigint NOT NULL,
+	creationdate bigint DEFAULT NULL,
 	totaltime bigint NOT NULL,
 	billedtime bigint NOT NULL,
 	price numeric(12,5) NOT NULL,
@@ -848,6 +849,7 @@ CREATE TABLE voip_cdr (
 CREATE INDEX voip_cdr_caller_idx ON voip_cdr (caller);
 CREATE INDEX voip_cdr_callee_idx ON voip_cdr (callee);
 CREATE INDEX voip_cdr_call_start_time_idx ON voip_cdr (call_start_time);
+CREATE INDEX voip_cdr_creationdate_idx ON voip_cdr (creationdate);
 CREATE INDEX voip_cdr_direction_idx ON voip_cdr (direction);
 CREATE INDEX voip_cdr_type_idx ON voip_cdr (type);
 CREATE INDEX voip_cdr_incremental_idx ON voip_cdr (incremental);
@@ -2626,7 +2628,7 @@ CREATE TABLE eventassignments (
 ------------------------------------------------------*/
 DROP TABLE IF EXISTS sessions CASCADE;
 CREATE TABLE sessions (
-    id 		varchar(50) 	NOT NULL DEFAULT '',
+    id 		varchar(100) 	NOT NULL DEFAULT '',
     ctime 	bigint 	NOT NULL DEFAULT 0,
     mtime 	bigint 	NOT NULL DEFAULT 0,
     atime 	bigint 	NOT NULL DEFAULT 0,
@@ -3403,7 +3405,7 @@ CREATE TABLE up_info_changes (
 ------------------------------------------------------*/
 DROP TABLE IF EXISTS up_sessions CASCADE;
 CREATE TABLE up_sessions (
-	id		varchar(50) 	NOT NULL DEFAULT '',
+	id		varchar(100) 	NOT NULL DEFAULT '',
 	customerid  integer NOT NULL
 		CONSTRAINT up_sessions_customerid_fkey REFERENCES customers (id) ON UPDATE CASCADE ON DELETE CASCADE,
 	ctime	bigint 	NOT NULL DEFAULT 0,
@@ -4378,7 +4380,8 @@ URL: %url
 2025.09.04:10.25
 2025.10.09:10.0
 2025.11.06:9.75
-2025.12.04:9.50', '', 0);
+2025.12.04:9.50
+2026.03.05:9.25', '', 0);
 
 INSERT INTO invprojects (name, type) VALUES ('inherited', 1);
 
@@ -4726,6 +4729,6 @@ INSERT INTO netdevicemodels (name, alternative_name, netdeviceproducerid) VALUES
 ('XR7', 'XR7 MINI PCI PCBA', 2),
 ('XR9', 'MINI PCI 600MW 900MHZ', 2);
 
-INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026042300');
+INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026050700');
 
 COMMIT;

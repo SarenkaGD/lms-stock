@@ -151,6 +151,7 @@ class KSeF
 
         $this->showOnlyAlternativeAccounts = \ConfigHelper::checkConfig('invoices.show_only_alternative_accounts');
         $this->showAllAccounts = \ConfigHelper::checkConfig('invoices.show_all_accounts');
+        $this->showMemo = \ConfigHelper::checkConfig('invoices.show_memo', true);
     }
 
     public function updateConfig(): array
@@ -446,10 +447,10 @@ class KSeF
         $xml .= "\t\t<DaneIdentyfikacyjne>" . PHP_EOL;
         if ($ue) {
             $xml .= "\t\t\t<KodUE>" . $m['country'] . "</KodUE>\n";
-            $xml .= "\t\t<NrVatUE>" . $m['ten'] . "</NrVatUE>\n";
+            $xml .= "\t\t\t<NrVatUE>" . $m['ten'] . "</NrVatUE>\n";
         } elseif ($foreign) {
             $xml .= "\t\t\t<KodKraju>" . $m['country'] . "</KodKraju>\n";
-            $xml .= "\t\t<NrID>" . $m['ten'] . "</NrID>\n";
+            $xml .= "\t\t\t<NrID>" . $m['ten'] . "</NrID>\n";
         } elseif (empty($invoice['ten'])) {
             $xml .= "\t\t\t<BrakID>1</BrakID>" . PHP_EOL;
         } else {
@@ -506,41 +507,55 @@ class KSeF
 
         $xml .= "\t\t<NrKlienta>" . $invoice['customerid'] . "</NrKlienta>" . PHP_EOL;
 
+        if ($invoice['type'] == DOC_CNOTE) {
+            $buyerUuid = \Ramsey\Uuid\Uuid::uuid4();
+            $buyerUuid = $buyerUuid->getHex();
+            $xml .= "\t\t<IDNabywcy>" . $buyerUuid . "</IDNabywcy>" . PHP_EOL;
+        }
+
         $xml .= "\t\t<JST>" . (empty($invoice['recipient_address_id']) || empty($invoice['recipient_type']) || $invoice['recipient_type'] == 2 ? '2' : '1') . "</JST>" . PHP_EOL;
         $xml .= "\t\t<GV>" . (empty($invoice['recipient_address_id']) || empty($invoice['recipient_type']) || $invoice['recipient_type'] == 1 ? '2' : '1') . "</GV>" . PHP_EOL;
 
         $xml .= "\t</Podmiot2>" . PHP_EOL;
 
+        $recipientTen = $recipientName = null;
+
         if (!empty($invoice['recipient_address_id'])) {
-            $rec_ue = $rec_foreign = false;
-            $rec_ten = preg_replace('/[\s\-]/', '', $invoice['recipient_ten']);
-            if (!empty($rec_ten)) {
-                if (preg_match('/^(?<country>[A-Z]{2})(?<ten>[A-Z0-9]+)$/', $rec_ten, $rec_m)) {
-                    if (strpos($rec_ten, 'GB') === false) {
-                        $rec_ue = true;
+            $recipientUe = $recipientForeign = false;
+            $recipientTen = preg_replace('/[\s\-]/', '', $invoice['recipient_ten']);
+            if (!empty($recipientTen)) {
+                if (preg_match('/^(?<country>[A-Z]{2})(?<ten>[A-Z0-9]+)$/', $recipientTen, $recipientM)) {
+                    if (strpos($recipientTen, 'GB') === false) {
+                        $recipientUe = true;
                     } else {
-                        $rec_foreign = true;
+                        $recipientForeign = true;
                     }
                 } elseif (!empty($invoice['rec_country_id']) && !empty($invoice['division_countryid']) && $invoice['rec_country_id'] != $invoice['division_countryid']) {
-                    $rec_foreign = true;
+                    $recipientForeign = true;
                 }
             }
 
             $xml .= "\t<Podmiot3>" . PHP_EOL;
 
+            if ($invoice['type'] == DOC_CNOTE) {
+                $recipientUuid = \Ramsey\Uuid\Uuid::uuid4();
+                $recipientUuid = $recipientUuid->getHex();
+                $xml .= "\t\t<IDNabywcy>" . $recipientUuid . "</IDNabywcy>" . PHP_EOL;
+            }
+
             $xml .= "\t\t<DaneIdentyfikacyjne>" . PHP_EOL;
-            if ($rec_ue) {
-                $xml .= "\t\t\t<KodUE>" . $rec_m['country'] . "</KodUE>\n";
-                $xml .= "\t\t<KodVatUE>" . $rec_m['ten'] . "</KodVatUE>\n";
-            } elseif ($rec_foreign) {
-                $xml .= "\t\t\t<KodKraju>" . $rec_m['country'] . "</KodKraju>\n";
-                $xml .= "\t\t<NrID>" . $rec_m['ten'] . "</NrID>\n";
+            if ($recipientUe) {
+                $xml .= "\t\t\t<KodUE>" . $recipientM['country'] . "</KodUE>\n";
+                $xml .= "\t\t\t<KodVatUE>" . $recipientM['ten'] . "</KodVatUE>\n";
+            } elseif ($recipientForeign) {
+                $xml .= "\t\t\t<KodKraju>" . $recipientM['country'] . "</KodKraju>\n";
+                $xml .= "\t\t\t<NrID>" . $recipientM['ten'] . "</NrID>\n";
             } elseif (empty($invoice['recipient_ten'])) {
                 $xml .= "\t\t\t<BrakID>1</BrakID>" . PHP_EOL;
             } elseif (check_ksef_internal_id($invoice['recipient_ten'])) {
                 $xml .= "\t\t\t<IDWew>" . self::formatInternalId($invoice['recipient_ten']) . "</IDWew>" . PHP_EOL;
             } else {
-                $xml .= "\t\t\t<NIP>" . preg_replace('/[^0-9]/', '', $rec_ten) . "</NIP>" . PHP_EOL;
+                $xml .= "\t\t\t<NIP>" . preg_replace('/[^0-9]/', '', $recipientTen) . "</NIP>" . PHP_EOL;
             }
             $recipientName = trim($invoice['rec_name']);
             if (!empty($recipientName)) {
@@ -827,7 +842,7 @@ class KSeF
         $xml .= "\t\t\t<P_16>2</P_16>" . PHP_EOL;
         $xml .= "\t\t\t<P_17>2</P_17>" . PHP_EOL;
         $xml .= "\t\t\t<P_18>" . (isset($invoice['taxest']['-2']) ? '1' : '2') . "</P_18>" . PHP_EOL;
-        $xml .= "\t\t\t<P_18A>" . ($invoice['total'] * $currencyValue >= 15000 ? '1' : '2') . "</P_18A>" . PHP_EOL;
+        $xml .= "\t\t\t<P_18A>" . (empty($invoice['flags'][DOC_FLAG_SPLIT_PAYMENT]) ? '2' : '1') . "</P_18A>" . PHP_EOL;
         $xml .= "\t\t\t<Zwolnienie>" . PHP_EOL;
         if ($taxFree) {
             $xml .= "\t\t\t\t<P_19>1</P_19>" . PHP_EOL;
@@ -869,6 +884,150 @@ class KSeF
             }
             $xml .= "\t\t</DaneFaKorygowanej>" . PHP_EOL;
             //$xml .= "\t\t<OkresFaKorygowanej>" . date('Y-m', $invoice['invoice']['sdate']) . "</OkresFaKorygowanej>" . PHP_EOL;
+
+            $correctedTen = preg_replace('/[\s\-]/', '', $invoice['invoice']['ten']);
+            $correctedBuyerName = trim($invoice['invoice']['name']);
+
+            if ($ten != $correctedTen
+                || $buyerName != $correctedBuyerName
+                || $invoice['address'] != $invoice['invoice']['address']
+                || $invoice['zip'] != $invoice['invoice']['zip']
+                || $invoice['city'] != $invoice['invoice']['city']
+                || $invoice['countryid'] != $invoice['invoice']['countryid']) {
+                $correctedUe = $correctedForeign = false;
+                if (!empty($correctedTen)) {
+                    if (preg_match('/^(?<country>[A-Z]{2})(?<ten>[A-Z0-9]+)$/', $correctedTen, $m)) {
+                        if (strpos($ten, 'GB') === false) {
+                            $correctedUe = true;
+                        } else {
+                            $correctedForeign = true;
+                        }
+                    }
+                }
+
+                $xml .= "\t\t<Podmiot2K>" . PHP_EOL;
+
+                $xml .= "\t\t\t<DaneIdentyfikacyjne>" . PHP_EOL;
+                if ($correctedUe) {
+                    $xml .= "\t\t\t\t<KodUE>" . $m['country'] . "</KodUE>\n";
+                    $xml .= "\t\t\t\t<NrVatUE>" . $m['ten'] . "</NrVatUE>\n";
+                } elseif ($correctedForeign) {
+                    $xml .= "\t\t\t\t<KodKraju>" . $m['country'] . "</KodKraju>\n";
+                    $xml .= "\t\t\t\t<NrID>" . $m['ten'] . "</NrID>\n";
+                } elseif (empty($invoice['invoice']['ten'])) {
+                    $xml .= "\t\t\t\t<BrakID>1</BrakID>" . PHP_EOL;
+                } else {
+                    $xml .= "\t\t\t\t<NIP>" . preg_replace('/[^0-9]/', '', $correctedTen) . "</NIP>" . PHP_EOL;
+                }
+                if (!empty($correctedBuyerName)) {
+                    $xml .= "\t\t\t\t<Nazwa>" . htmlspecialchars($correctedBuyerName) . "</Nazwa>" . PHP_EOL;
+                }
+                $xml .= "\t\t\t</DaneIdentyfikacyjne>" . PHP_EOL;
+
+                $xml .= "\t\t\t<Adres>" . PHP_EOL;
+
+                if (!empty($invoice['invoice']['countryid']) && isset($this->countries[$invoice['invoice']['countryid']])) {
+                    $countryCode = substr($this->countries[$invoice['invoice']['countryid']]['ccode'], 3);
+                } else {
+                    $countryCode = 'PL';
+                }
+                $xml .= "\t\t\t\t<KodKraju>" . $countryCode . "</KodKraju>" . PHP_EOL;
+
+                $xml .= "\t\t\t\t<AdresL1>"
+                    . (empty($invoice['invoice']['address'])
+                        ? '-'
+                        : htmlspecialchars($invoice['invoice']['address'])
+                    ) . "</AdresL1>" . PHP_EOL;
+                $xml .= "\t\t\t\t<AdresL2>"
+                    . (empty($invoice['invoice']['city']) && empty($invoice['invoice']['zip'])
+                        ? '-'
+                        : htmlspecialchars((empty($invoice['invoice']['zip']) ? '' : $invoice['invoice']['zip'] . ' ') . $invoice['invoice']['city'])
+                    ) . "</AdresL2>" . PHP_EOL;
+
+                $xml .= "\t\t\t</Adres>" . PHP_EOL;
+
+                $xml .= "\t\t\t<IDNabywcy>" . $buyerUuid . "</IDNabywcy>" . PHP_EOL;
+
+                $xml .= "\t\t</Podmiot2K>" . PHP_EOL;
+            }
+
+            if (!empty($invoice['invoice']['recipient_address_id'])) {
+                $correctedRecipientTen = preg_replace('/[\s\-]/', '', $invoice['invoice']['recipient_ten']);
+                $correctedRecipientName = trim($invoice['invoice']['rec_name']);
+
+                if (empty($invoice['recipient_address_id'])
+                    || $recipientTen != $correctedRecipientTen
+                    || $recipientName != $correctedRecipientName
+                    || $invoice['rec_address'] != $invoice['invoice']['rec_address']
+                    || $invoice['rec_zip'] != $invoice['invoice']['rec_zip']
+                    || $invoice['rec_city'] != $invoice['invoice']['rec_city']
+                    || $invoice['rec_country_id'] != $invoice['invoice']['rec_country_id']) {
+                    if (!isset($recipientUuid)) {
+                        $recipientUuid = \Ramsey\Uuid\Uuid::uuid4();
+                        $recipientUuid = $recipientUuid->getHex();
+                    }
+
+                    $correctedRecipientUe = $correctedRecipientForeign = false;
+                    if (!empty($correctedRecipientTen)) {
+                        if (preg_match('/^(?<country>[A-Z]{2})(?<ten>[A-Z0-9]+)$/', $correctedRecipientTen, $correctedRecipientM)) {
+                            if (strpos($correctedRecipientTen, 'GB') === false) {
+                                $correctedRecipientUe = true;
+                            } else {
+                                $correctedRecipientForeign = true;
+                            }
+                        } elseif (!empty($invoice['invoice']['rec_country_id']) && !empty($invoice['invoice']['division_countryid']) && $invoice['invoice']['rec_country_id'] != $invoice['invoice']['division_countryid']) {
+                            $correctedRecipientForeign = true;
+                        }
+                    }
+
+                    $xml .= "\t<Podmiot2K>" . PHP_EOL;
+
+                    $xml .= "\t\t<DaneIdentyfikacyjne>" . PHP_EOL;
+                    if ($correctedRecipientUe) {
+                        $xml .= "\t\t\t<KodUE>" . $correctedRecipientM['country'] . "</KodUE>\n";
+                        $xml .= "\t\t\t<KodVatUE>" . $correctedRecipientM['ten'] . "</KodVatUE>\n";
+                    } elseif ($correctedRecipientForeign) {
+                        $xml .= "\t\t\t<KodKraju>" . $correctedRecipientM['country'] . "</KodKraju>\n";
+                        $xml .= "\t\t\t<NrID>" . $correctedRecipientM['ten'] . "</NrID>\n";
+                    } elseif (empty($invoice['invoice']['recipient_ten'])) {
+                        $xml .= "\t\t\t<BrakID>1</BrakID>" . PHP_EOL;
+                    } elseif (check_ksef_internal_id($invoice['invoice']['recipient_ten'])) {
+                        $correctedRecipientTen = substr(preg_replace('/[^0-9]/', '', $correctedRecipientTen), 0, 10);
+                        $xml .= "\t\t\t<NIP>" . $correctedRecipientTen . "</NIP>" . PHP_EOL;
+                    } else {
+                        $correctedRecipientTen = preg_replace('/[^0-9]/', '', $correctedRecipientTen);
+                        $xml .= "\t\t\t<NIP>" . $correctedRecipientTen . "</NIP>" . PHP_EOL;
+                    }
+                    if (!empty($correcredRecipientName)) {
+                        $xml .= "\t\t\t<Nazwa>" . htmlspecialchars($correctedRecipientName) . "</Nazwa>" . PHP_EOL;
+                    }
+                    $xml .= "\t\t</DaneIdentyfikacyjne>" . PHP_EOL;
+
+                    if (!empty($invoice['invoice']['rec_country_id']) && isset($this->countries[$invoice['invoice']['rec_country_id']])) {
+                        $correctedRecipientCountryCode = substr($this->countries[$invoice['invoice']['rec_country_id']]['ccode'], 3);
+                    } else {
+                        $correctedRecipientCountryCode = 'PL';
+                    }
+
+                    $xml .= "\t\t<Adres>" . PHP_EOL;
+                    $xml .= "\t\t\t<KodKraju>" . $correctedRecipientCountryCode . "</KodKraju>" . PHP_EOL;
+                    $xml .= "\t\t\t<AdresL1>"
+                        . (empty($invoice['invoice']['rec_address'])
+                            ? '-'
+                            : htmlspecialchars($invoice['invoice']['rec_address'])
+                        ) . "</AdresL1>" . PHP_EOL;
+                    $xml .= "\t\t\t<AdresL2>"
+                        . (empty($invoice['invoice']['rec_zip']) && empty($invoice['invoice']['rec_city'])
+                            ? '-'
+                            : htmlspecialchars((empty($invoice['invoice']['rec_zip']) ? '' : $invoice['invoice']['rec_zip'] . ' ') . $invoice['invoice']['rec_city'])
+                        ) . "</AdresL2>" . PHP_EOL;
+                    $xml .= "\t\t</Adres>" . PHP_EOL;
+
+                    $xml .= "\t\t<IDNabywcy>" . $recipientUuid . "</IDNabywcy>" . PHP_EOL;
+
+                    $xml .= "\t</Podmiot2K>" . PHP_EOL;
+                }
+            }
         } else {
             $xml .= "\t\t<RodzajFaktury>VAT</RodzajFaktury>" . PHP_EOL;
         }
@@ -898,7 +1057,7 @@ class KSeF
             }
         }
 
-        if (!empty($invoice['memo'])) {
+        if ($this->showMemo && !empty($invoice['memo'])) {
             $memo = htmlspecialchars(\Utils::removeHtml($invoice['memo']));
             $memoLines = \Utils::wordWrapToArray($memo, 256);
             foreach ($memoLines as $memoLine) {
@@ -947,9 +1106,15 @@ class KSeF
                     $xml .= "\t\t\t<P_9A>" . $this->smartFormatNumber($refInvoiceContent[$itemId]['netprice']) . "</P_9A>" . PHP_EOL;
                 }
                 if (empty($invoice['netflag'])) {
+                    if (!empty($invoice['ksefxmladdallvalues'])) {
+                        $xml .= "\t\t\t<P_11>" . sprintf('%.2f', $refInvoiceContent[$itemId]['totalbase']) . "</P_11>" . PHP_EOL;
+                    }
                     $xml .= "\t\t\t<P_11A>" . sprintf('%.2f', $refInvoiceContent[$itemId]['total']) . "</P_11A>" . PHP_EOL;
                 } else {
                     $xml .= "\t\t\t<P_11>" . sprintf('%.2f', $refInvoiceContent[$itemId]['totalbase']) . "</P_11>" . PHP_EOL;
+                    if (!empty($invoice['ksefxmladdallvalues'])) {
+                        $xml .= "\t\t\t<P_11A>" . sprintf('%.2f', $refInvoiceContent[$itemId]['total']) . "</P_11A>" . PHP_EOL;
+                    }
                 }
                 $xml .= "\t\t\t<P_11Vat>" . sprintf('%.2f', $refInvoiceContent[$itemId]['totaltax']) . "</P_11Vat>" . PHP_EOL;
 
@@ -1098,6 +1263,22 @@ class KSeF
         $xml .= "\t\t<Platnosc>" . PHP_EOL;
         $xml .= "\t\t\t<TerminPlatnosci>" . PHP_EOL;
         $xml .= "\t\t\t\t<Termin>" . date('Y-m-d', $invoice['pdate']) . "</Termin>" . PHP_EOL;
+/*
+        if ($currency != $this->defaultCurrency) {
+            $total = $invoice['type'] == DOC_CNOTE ? $diffTotal : $invoice['total'];
+            if ($total >= 0) {
+                $xml .= "\t\t\t\t<TerminOpis>Do zapłaty " . moneyf($total * $currencyValue) . ';'
+                    . ' cena umowna ' . moneyf($total, $currency)
+                    . ' po kursie ' . $this->smartFormatNumber($currencyValue)
+                    . "</TerminOpis>" . PHP_EOL;
+            } else {
+                $xml .= "\t\t\t\t<TerminOpis>Do zwrotu " . moneyf(abs($total) * $currencyValue) . ';'
+                    . ' cena umowna ' . moneyf(abs($total), $currency)
+                    . ' po kursie ' . $this->smartFormatNumber($currencyValue)
+                    . "</TerminOpis>" . PHP_EOL;
+            }
+        }
+*/
         $xml .= "\t\t\t</TerminPlatnosci>" . PHP_EOL;
         if (!isset($this->payTypes[$invoice['paytype']]) || !is_int($this->payTypes[$invoice['paytype']])) {
             $xml .= "\t\t\t<PlatnoscInna>1</PlatnoscInna>" . PHP_EOL;
@@ -1107,7 +1288,7 @@ class KSeF
         }
 
         $bank = null;
-        if (!$this->showOnlyAlternativeAccounts || empty($invoice['bankaccounts'])) {
+        if ((!$this->showOnlyAlternativeAccounts || empty($invoice['bankaccounts'])) && !empty($invoice['account'])) {
             $accounts = array(bankaccount($invoice['customerid'], $invoice['account'], $invoice['export']));
             if (!empty($invoice['division_bank'])) {
                 $bank = $invoice['division_bank'];
@@ -2045,7 +2226,7 @@ class KSeF
         return self::$deadlineUnits[$deadlineUnit] ?? 'days';
     }
 
-    public static function getCertificatePath(int $type = self::CERTIFICATE_TYPE_ONLINE): string
+    public static function getCertificatePath(int $type = self::CERTIFICATE_TYPE_ONLINE): ?string
     {
         $certificatePath = $type == self::CERTIFICATE_TYPE_OFFLINE
             ? \ConfigHelper::getConfig('ksef.offline_certificate')
