@@ -49,18 +49,25 @@ else
 $SESSION->save('sgiplssp', $ssp);
 
 if (isset($_POST['filter'])) {
-        if ($_POST['filter']['sn'])
+        if (isset($_POST['filter']['sn']) && strlen($_POST['filter']['sn'] > 0))
 		$filter['sn'] = $_POST['filter']['sn'];
 	else
 		$filter['sn'] = NULL;
 
-	if ($_POST['filter']['name'])
+	if (isset($_POST['filter']['name']) && strlen($_POST['filter']['name'] > 0))
 		$filter['name'] = $_POST['filter']['name'];
 	else
 		$filter['name'] = NULL;
+
+	if (isset($_POST['filter']['warehouse']) && ctype_digit($_POST['filter']['warehouse']))
+		$filter['warehouse'] = $_POST['filter']['warehouse'];
+	else
+		$filter['warehouse'] = NULL;
+
+
 }
 
-$productlist = $LMSST->StockProductList($o, NULL, $ssp, NULL, NULL, NULL, $groupinfo['id'], $filter);
+$productlist = $LMSST->StockProductList($o, NULL, $ssp, NULL, $filter['warehouse'], NULL, $groupinfo['id'], $filter);
 //$productlist = $LMSST->StockList($o, NULL, $groupinfo['id']);
 $listdata['total'] = $productlist['total'];
 $listdata['totalvn'] = $productlist['totalvn'];
@@ -75,6 +82,11 @@ unset($productlist['order']);
 unset($productlist['totalpcs']);
 unset($productlist['totalvg']);
 unset($productlist['totalvn']);
+
+$warehouselist = $LMSST->WarehouseGetList($o);
+unset($warehouselist['total']);
+unset($warehouselist['direction']);
+unset($warehouselist['order']);
 
 if(!isset($_GET['page']))
 	$SESSION->restore('sgipl', $_GET['page']);
@@ -93,5 +105,6 @@ $SMARTY->assign('start',$start);
 $SMARTY->assign('listdata', $listdata);
 $SMARTY->assign('productlist', $productlist);
 $SMARTY->assign('groupinfo',$groupinfo);
+$SMARTY->assign('warehouses', $warehouselist);
 $SMARTY->display('stck/stckgroupinfo.html');
 ?>

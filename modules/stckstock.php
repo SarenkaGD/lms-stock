@@ -24,7 +24,7 @@ if (isset($_POST['stock'])) {
 	$SESSION->restore('splfl', $stock);
 }
 
-if (!isset($stock['warehouse']) || !$stock['warehouse'])
+if (!isset($stock['warehouse']) || !ctype_digit($stock['warehouse']))
 	$stock['warehouse'] = $LMSST->WarehouseGetDefaultId();
 
 $productlist = $LMSST->StockList($o, (isset($stock['manufacturer']) ? $stock['manufacturer'] : NULL), (isset($stock['group']) ? $stock['group'] : NULL), (isset($stock['warehouse']) ? $stock['warehouse'] : NULL));

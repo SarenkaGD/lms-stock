@@ -11,16 +11,25 @@ function filter() {
 -->
 </SCRIPT>
 <TABLE CELLPADDING="3" width="100%">
-	<FORM NAME="stckslb" METHOD="post" ACTION="?m={$module}&amp;ssp={$ssp}">
+<!--	<FORM NAME="stckslb" METHOD="post" ACTION="?m={$module}&amp;ssp={$ssp}">
 	<TR CLASS="dark">
 		<TD CLASS="ftl nobr"><b>{t}Name:{/t}</b> <INPUT TYPE="text" style="width: 30%;" NAME="filter[name]" VALUE="{$filter.name}"></td>
 		<TD CLASS="ftop nobr"><b>S/N:</b> <INPUT TYPE="text" style="width: 60%;" NAME="filter[sn]" VALUE="{$filter.sn}"></td>
+		<td class="ftop">&nbsp;</td>
+		<TD class="ftop nobr"><b>{t}Warehouse{/t}:</b>
+			<select name="stock[warehouse]" onChange="this.form.submit()">
+				<option value="">{t}- select warehouse -{/t}</option>
+				{foreach from=$warehouses item=wh}
+					<option value="{$wh.id}"{if $wh.def && !$stockfl.warehouse} SELECTED{/if}{if $stockfl.warehouse eq $wh.id} SELECTED{/if}>{$wh.name}</option>
+				{/foreach}
+			</select>
+		</TD>
 		<td CLASS="ftop"><a href="javascript:filter()">&raquo;&raquo;&raquo;</a></td>
-		<TD COLSPAN="{if $ssp}10{else}8{/if}" CLASS="ftr"></TD>
+		<TD COLSPAN="{if $ssp}8{else}6{/if}" CLASS="ftr"></TD>
 	</TR>
-	</FORM>
+</FORM>-->
 	<TR CLASS="dark">
-		<TD COLSPAN="{if $ssp}13{else}11{/if}" ALIGN="right" CLASS="fleft fright">
+		<TD COLSPAN="{if $ssp}13{else}11{/if}" ALIGN="right" CLASS="fleft fright ftop">
 			<A HREF="?m={$module}&amp;ssp={!$ssp}"{if $ssp} CLASS="bold"{/if}>{t}Show sold positions{/t}</A>
 		</TD>
 	</TR>
@@ -67,6 +76,23 @@ function filter() {
 <!--			<A href="?m=stckproductadd">{t}Add product{/t} <IMG src="img/save.gif" alt=""> </A>	-->
 		</TD>
 	</TR>
+	<FORM NAME="stckslb" METHOD="post" ACTION="?m={$module}&amp;ssp={$ssp}">
+        <TR CLASS="dark">
+                <TD CLASS="ftl nobr"><INPUT TYPE="text" style="width: 30%;" NAME="filter[name]" VALUE="{$filter.name}"></td>
+                <TD CLASS="nobr" align="center"><INPUT TYPE="text" style="width: 60%;" NAME="filter[sn]" VALUE="{$filter.sn}"></td>
+		<td>&nbsp;</td>
+                <TD class="nobr">
+                        <select name="filter[warehouse]" onChange="this.form.submit()">
+                                <option value="">{t}- select warehouse -{/t}</option>
+                                {foreach from=$warehouses item=wh}
+                                        <option value="{$wh.id}"{if $filter.warehouse eq $wh.id} SELECTED{/if}>{$wh.name}</option>
+                                {/foreach}
+                        </select>
+                </TD>
+                <TD COLSPAN="{if $ssp}8{else}6{/if}" CLASS="ftop"></TD>
+		<td CLASS="ftr"><a href="javascript:filter()">&raquo;&raquo;&raquo;</a></td>
+        </TR>
+        </FORM>
 	{if $listdata.total != 0}
 	<TR CLASS="dark">
 		<TD CLASS="fall" colspan="{if $ssp}13{else}11{/if}" WIDTH="100%">

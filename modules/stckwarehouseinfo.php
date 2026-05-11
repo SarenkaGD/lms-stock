@@ -49,15 +49,15 @@ else
 $SESSION->save('swiplssp', $ssp);
 
 if (isset($_POST['filter'])) {
-        if ($_POST['filter']['sn'])
-		$filter['sn'] = $_POST['filter']['sn'];
-	else
-		$filter['sn'] = NULL;
-		
-	if ($_POST['filter']['name'])
-		$filter['name'] = $_POST['filter']['name'];
-	else
-		$filter['name'] = NULL;
+        if (isset($_POST['filter']['sn']) && strlen($_POST['filter']['sn'] > 0))
+                $filter['sn'] = $_POST['filter']['sn'];
+        else
+                $filter['sn'] = NULL;
+
+        if (isset($_POST['filter']['name']) && strlen($_POST['filter']['name'] > 0))
+                $filter['name'] = $_POST['filter']['name'];
+        else
+                $filter['name'] = NULL;
 }
 
 //$productlist = $LMSST->StockList($o, NULL, NULL, $warehouseinfo['id']);
