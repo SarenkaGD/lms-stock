@@ -784,9 +784,19 @@ class LMSTcpdfInvoice extends LMSInvoice
     {
         $this->backend->SetFont(null, 'B', 9);
 
-        $show_balance_summary = $this->data['doctype'] == DOC_DNOTE
-            ? ConfigHelper::checkConfig('notes.show_balance_summary', ConfigHelper::checkConfig('invoices.show_balance_summary'))
-            : ConfigHelper::checkConfig('invoices.show_balance_summary');
+	switch ($this->data['doctype']) {
+		case DOC_DNOTE:
+			$show_balance_summary = ConfigHelper::checkConfig('notes.show_balance_summary', ConfigHelper::checkConfig('invoices.show_balance_summary'));
+			break;
+		case DOC_INVOICE_PRO:
+			$show_balance_summary = ConfigHelper::checkConfig('invoices.show_balance_summary_pro');
+			if (!$show_balance_summary)
+				return;
+			break;
+		default:
+			$show_balance_summary = ConfigHelper::checkConfig('invoices.show_balance_summary');
+			break;
+	}
 
         $balance = $this->data['customerbalance'];
 
