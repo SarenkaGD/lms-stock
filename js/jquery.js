@@ -253,6 +253,9 @@ function init_datepickers(selector) {
 	}
 
 	$(selector).each(function() {
+		if ($(this).is('.hasDatepicker')) {
+			return;
+		}
 		var that = this;
 		var unix = $(this).hasClass('unix') || $(this).hasClass('lms-ui-date-unix');
 		var yearRange = $(this).attr('data-year-range');
@@ -475,23 +478,33 @@ function initAdvancedSelectsTest(selector) {
 
 		$(this).select2(options);
 
-		if (typeof($(this).attr('required')) !== 'undefined' || $(this).prop('required') || $(this).is('[data-required]')) {
-			$(this).siblings('.select2').find('.select2-selection').toggleClass('lms-ui-error', ['', '0'].includes($(this).val()) || $(this).is('.lms-ui-error'));
-		}
-
-		$(this).on('change', function() {
+		this.updateRequiredState = function(triggerEvent) {
 			if (typeof($(this).attr('required')) !== 'undefined' || $(this).prop('required') || $(this).is('[data-required]')) {
-				var invalidValue = ['', '0'].includes($(this).val());
+				if (typeof(triggerEvent) === 'undefined') {
+					triggerEvent = true;
+				}
 				var advancedSelectElement = $(this).siblings('.select2').find('.select2-selection');
-				advancedSelectElement.toggleClass('lms-ui-error', invalidValue);
-				$(this).trigger(
-					'lms:advanced_select_validate_required',
-					[{
+				var invalidValue = ['', '0'].includes($(this).val()) || advancedSelectElement.is('.select2-selection--multiple') && !$(this).val().length;
+				if (triggerEvent) {
+					var eventData = {
 						invalidValue: invalidValue,
 						advancedSelectElement: advancedSelectElement
-					}]
-				);
+					};
+					const e = $.Event('lms:advanced_select_validate_required');
+					$(this).trigger(e, eventData);
+					if (typeof(e.result) === 'undefined' || e.result) {
+						advancedSelectElement.toggleClass('lms-ui-error', invalidValue);
+					}
+				} else {
+					advancedSelectElement.toggleClass('lms-ui-error', invalidValue);
+				}
 			}
+		}
+
+		this.updateRequiredState(false);
+
+		$(this).on('change', function() {
+			this.updateRequiredState();
 		}).on("select2:clear", function(){
 			$(this).on("select2:opening.cancelOpen", function(e){
 				e.preventDefault();
@@ -1373,7 +1386,9 @@ function initRolloverHints(selectors) {
 					create: function() {
 						elem.tooltip('open');
 					},
-					tooltipClass: 'lms-ui-hint-rollover' + (tooltipClass ? ' ' + tooltipClass : ''),
+					classes: {
+						'ui-tooltip': 'lms-ui-hint-rollover' + (tooltipClass ? ' ' + tooltipClass : '')
+					},
 					content: content
 				});
 			}
@@ -1463,7 +1478,9 @@ function initToggleHints(selectors) {
 									$(this).remove();
 								});
 							},
-							tooltipClass: 'lms-ui-hint-toggle' + (tooltipClass ? ' ' + tooltipClass : ''),
+							classes: {
+								'ui-tooltip': 'lms-ui-hint-toggle' + (tooltipClass ? ' ' + tooltipClass : '')
+							},
 							content: content
 						});
 					}
@@ -1587,7 +1604,9 @@ function initDocumentViewers(selectors) {
 			items: '[data-preview-type="image"]',
 			show: false,
 			//hide: false,
-			tooltipClass: 'documentview',
+			classes: {
+				'ui-tooltip': 'documentview'
+			},
 			content: function () {
 				var href = $(this).attr('href') + '&api=1&thumbnail=300';
 				return '<img src="' + href + '" style="max-width: 300px;">';
