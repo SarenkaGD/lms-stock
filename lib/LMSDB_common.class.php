@@ -25,7 +25,7 @@
  */
 
 // here should be always the newest version of database!
-define('DBVERSION', '2026061700');
+define('DBVERSION', '2026063000');
 
 /**
  *
@@ -443,6 +443,17 @@ abstract class LMSDB_common implements LMSDBInterface
      *
      * @return string
      */
+
+    public function LockByHandle($handle): mixed
+    {
+        return $this->_driver_lockbyhandle($handle);
+    }
+
+    public function UnLockByHandle($handle): mixed
+    {
+        return $this->_driver_unlockbyhandle($handle);
+    }
+
     public function GetDBVersion()
     {
         return $this->_driver_dbversion();

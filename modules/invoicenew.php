@@ -177,7 +177,9 @@ switch ($action) {
             $invoice['deadline'] = $currtime + $paytime * 86400;
         }
 
-        if (!isset($_GET['clone'])) {
+        if (isset($_GET['clone'])) {
+            $invoice['closed'] = 0;
+        } else {
             $invoice['numberplanid'] = $LMS->getDefaultNumberPlanID(
                 $invoice['proforma'] ? DOC_INVOICE_PRO : DOC_INVOICE,
                 empty($customer) ? null : $customer['divisionid']
@@ -604,6 +606,8 @@ switch ($action) {
         }
 
         $DB->BeginTrans();
+
+/*
         $tables = array('documents', 'cash', 'invoicecontents', 'numberplans', 'divisions', 'vdivisions',
             'addresses', 'customers', 'customer_addresses');
         if (ConfigHelper::getConfig('database.type') != 'postgres') {
@@ -612,11 +616,6 @@ switch ($action) {
 
         if ($SYSLOG) {
             $tables = array_merge($tables, array('logmessages', 'logmessagekeys', 'logmessagedata', 'logtransactions'));
-	}
-
-	if (ConfigHelper::getConfig('phpui.stock'))//Added if/else (clean) for STCK by Sarenka MAXCON
-		$tables = array_merge($tables, array('stck_cashassignments','stck_invoicecontentsassignments','stck_gtuassignments','stck_stock'));//END STCK
-
         $hook_data = array(
             'tables' => array(),
         );
@@ -624,8 +623,11 @@ switch ($action) {
         if (is_array($hook_data['tables']) && !empty($hook_data['tables'])) {
             $tables = array_unique(array_merge($tables, $hook_data['tables']));
         }
-	
-	$DB->LockTables($tables);
+
+        $DB->LockTables($tables);
+*/
+
+        $DB->LockByHandle(LOCK_INVOICE_NUMBER);
 
         if (!$invoice['number']) {
             $invoice['number'] = $LMS->GetNewDocumentNumber(array(
@@ -732,7 +734,10 @@ switch ($action) {
             }
         }
 
-        $DB->UnLockTables();
+//        $DB->UnLockTables();
+
+        $DB->UnLockByHandle(LOCK_INVOICE_NUMBER);
+
         $DB->CommitTrans();
 
         $SESSION->remove('invoicecontents', true);

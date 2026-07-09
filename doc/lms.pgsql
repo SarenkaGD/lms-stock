@@ -66,7 +66,7 @@ DROP SEQUENCE IF EXISTS twofactorauthtrusteddevices_id_seq;
 CREATE SEQUENCE twofactorauthtrusteddevices_id_seq;
 DROP TABLE IF EXISTS twofactorauthtrusteddevices CASCADE;
 CREATE TABLE twofactorauthtrusteddevices (
-    id integer DEFAULT nextval('twofactorauthtrusteddevices_id_seq'::text),
+    id integer DEFAULT nextval('twofactorauthtrusteddevices_id_seq'::text) NOT NULL,
     userid integer NOT NULL
         CONSTRAINT twofactorauthtrusteddevices_userid_fkey REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
     cookiename varchar(64) NOT NULL,
@@ -211,9 +211,9 @@ DROP TABLE IF EXISTS location_buildings CASCADE;
 CREATE TABLE location_buildings (
 	id           integer DEFAULT nextval('location_buildings_id_seq'::text) NOT NULL,
 	city_id      integer NOT NULL
-		CONSTRAINT location_cities_city_id_fkey REFERENCES location_cities (id) ON DELETE CASCADE ON UPDATE CASCADE,
+		CONSTRAINT location_buildings_city_id_fkey REFERENCES location_cities (id) ON DELETE CASCADE ON UPDATE CASCADE,
 	street_id    integer NULL
-		CONSTRAINT location_cities_street_id_fkey REFERENCES location_streets (id) ON DELETE CASCADE ON UPDATE CASCADE,
+		CONSTRAINT location_buildings_street_id_fkey REFERENCES location_streets (id) ON DELETE CASCADE ON UPDATE CASCADE,
 	building_num varchar(20) NULL,
 	zip          varchar(10) DEFAULT NULL,
 	latitude     numeric(10,6) NULL,
@@ -296,6 +296,7 @@ CREATE TABLE divisions (
 /* --------------------------------------------------------
   Structure of table "serviceproviders" (serviceproviders)
 -------------------------------------------------------- */
+DROP SEQUENCE IF EXISTS serviceproviders_id_seq;
 CREATE SEQUENCE serviceproviders_id_seq;
 DROP TABLE IF EXISTS serviceproviders;
 CREATE TABLE serviceproviders (
@@ -393,7 +394,7 @@ CREATE TABLE customernotes (
     message text NOT NULL,
     moddate bigint DEFAULT NULL,
     moduserid integer DEFAULT NULL
-        CONSTRAINT customernotes_moduserid_fkey REFERENCES users (id) ON DELETE SET NULL ON UPDATE SET NULL,
+        CONSTRAINT customernotes_moduserid_fkey REFERENCES users (id) ON DELETE SET NULL ON UPDATE CASCADE,
     PRIMARY KEY (id)
 );
 
@@ -607,6 +608,7 @@ CREATE INDEX documents_numberplanid_idx ON documents(numberplanid);
 CREATE INDEX documents_customerid_idx ON documents(customerid);
 CREATE INDEX documents_closed_idx ON documents(closed);
 CREATE INDEX documents_reference_idx ON documents(reference);
+CREATE INDEX documents_type_idx ON documents (type);
 
 /* --------------------------------------------------------
   Structure of table "documentcontents"
@@ -792,9 +794,9 @@ CREATE SEQUENCE voip_rule_states_id_seq;
 DROP TABLE IF EXISTS voip_rule_states CASCADE;
 CREATE TABLE voip_rule_states (
 	id              integer DEFAULT nextval('voip_rule_states_id_seq'::text) NOT NULL,
-	voip_account_id integer NOT NULL DEFAULT NULL
+	voip_account_id integer NOT NULL
 		REFERENCES voipaccounts (id) ON DELETE CASCADE ON UPDATE CASCADE,
-	rule_id         integer NOT NULL DEFAULT NULL
+	rule_id         integer NOT NULL
 		REFERENCES voip_rules (id) ON DELETE CASCADE ON UPDATE CASCADE,
 	units_left      integer NULL DEFAULT NULL,
 	PRIMARY KEY(id),
@@ -2186,7 +2188,8 @@ CREATE TABLE rttickets (
     CONSTRAINT rttickets_address_id_fkey REFERENCES addresses (id) ON UPDATE CASCADE ON DELETE SET NULL,
   nodeid integer	DEFAULT NULL
     CONSTRAINT rttickets_nodeid_fkey REFERENCES nodes (id) ON UPDATE CASCADE ON DELETE SET NULL,
-  netnodeid integer	DEFAULT NULL,
+  netnodeid integer	DEFAULT NULL
+    CONSTRAINT rttickets_netnodeid_fkey REFERENCES netnodes (id) ON UPDATE CASCADE ON DELETE SET NULL,
   netdevid integer	DEFAULT NULL
     CONSTRAINT rttickets_netdevid_fkey REFERENCES netdevices (id) ON UPDATE CASCADE ON DELETE SET NULL,
   verifierid integer DEFAULT NULL
@@ -2758,8 +2761,7 @@ DROP TABLE IF EXISTS dbinfo CASCADE;
 CREATE TABLE dbinfo (
     keytype 	varchar(255) 	DEFAULT '' NOT NULL,
     keyvalue 	varchar(255) 	DEFAULT '' NOT NULL,
-    PRIMARY KEY (keytype),
-    CONSTRAINT dbinfo_keytype_ukey UNIQUE (keytype)
+    PRIMARY KEY (keytype)
 );
 
 /* ---------------------------------------------------
@@ -4739,6 +4741,6 @@ INSERT INTO netdevicemodels (name, alternative_name, netdeviceproducerid) VALUES
 ('XR7', 'XR7 MINI PCI PCBA', 2),
 ('XR9', 'MINI PCI 600MW 900MHZ', 2);
 
-INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026061700');
+INSERT INTO dbinfo (keytype, keyvalue) VALUES ('dbversion', '2026063000');
 
 COMMIT;
