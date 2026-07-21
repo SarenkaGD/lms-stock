@@ -100,7 +100,7 @@
     }
 
 </style>
-
+{$invoice_autocomplete = ConfigHelper::getConfig('phpui.invoice_autocomplete')}
 <form method="POST" action="?m={$layout.module}" name="contents" id="contents">
     <input type="submit" class="hiddenbtn">
     <table class="lmsbox lms-ui-background-cycle invoice-contents">
@@ -494,9 +494,9 @@
                                        placeholder="{trans('... or enter description')}"
                                 >
                                 *}
-                                <textarea name="name" cols="40" rows="1" class="lms-ui-autogrow lms-ui-autocomplete" style="width:300px"
+				<textarea name="name" id="name" cols="40" rows="1" class="lms-ui-autogrow{if $invoice_autocomplete} lms-ui-autocomplete{/if}" style="width:300px"
                                     placeholder="{trans('... or enter description')}"
-                                >{if isset($itemdata) && !isset($error.posuid)}{$itemdata.name|escape}{/if}</textarea>
+				>{if isset($itemdata) && !isset($error.posuid)}{$itemdata.name|escape}{/if}</textarea>
 				<INPUT TYPE="hidden" NAME="stckproductid" ID="pid"><!-- Added for STCK by Sarenka MAXCON -->
 				<INPUT TYPE="hidden" NAME="stckgtuid" ID="gtuid"><!-- Added for STCK by Sarenka MAXCON -->
 				<span id="tariff-price-variants"></span>
