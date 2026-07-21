@@ -38,6 +38,14 @@ function modalwindow(module, width, height, reload, maxwidth, maxheight) {
 	});
 }
 
+function copyToClipboard(id) {
+	var copyText = document.getElementById(id);
+	copyText.select();
+	copyText.setSelectionRange(0, 99999);
+	navigator.clipboard.writeText(copyText.value);
+	alert("Copied the text: " + copyText.value);
+}
+
 function modalclose() {
 	parent.$.modal.close();
 }
@@ -140,6 +148,11 @@ $(document).ready(function() {
 			$('#packaging_count').attr('disabled', true);
 			$('#packaging_unit').attr('disabled', true);
 		}
+	});
+
+	$('.stck-copytoclipboard-ui').click(function(e) {
+		e.stopPropagation();
+		navigator.clipboard.writeText($('#'+$(this).data('snid')).text());
 	});
 
 });

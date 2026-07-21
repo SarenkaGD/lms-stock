@@ -143,4 +143,5 @@ $_LANG['<!qs>product warranty'] = 'gwaranacja na produkt';
 $_LANG['<!qs>stock price'] = 'produkty na stanie (cena)';
 $_LANG['KSeF document already exists!'] = 'Dokument KSeF już istnieje!';
 $_LANG['Incorrect KSeF number!'] = 'Błędny numer KSeF!';
+$_LANG['Copy to clipboard'] = 'Skopiuj do schowka';
 ?>
