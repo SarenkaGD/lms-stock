@@ -122,7 +122,7 @@
 						{if empty($netnodeid)}
 							{network_node_selection
 								id='netnodeid'
-								name='event[netnodeid]'
+								elemname='event[netnodeid]'
 								form='event'
 								selected=$event.netnodeid
 								onchange="xajax_netnode_changed($(this).val(), $('#eventnetdevid').val(), 'event', 'eventnetdevs', 'eventnetdevid')"}
@@ -218,11 +218,11 @@
 						{/capture}
 					{/function}
 
-					{if $layout.module == 'eventedit'}
-						{box_row icon="note" icon_class="fa-fw" label="Note:"}
-							<TEXTAREA name="event[note]" cols="50" rows="5" {tip text="Enter note (optional)"}>{$event.note}</TEXTAREA>
-						{/box_row}
+					{box_row icon="note" icon_class="fa-fw" label="Note:"}
+						<textarea name="event[note]" cols="50" rows="5" {tip text="Enter note (optional)"}>{$event.note}</textarea>
+					{/box_row}
 
+					{if $layout.module == 'eventedit'}
 						{box_row icon="helpdesk" icon_class="fa-fw" label="Assign ticket"}
 							<input type="hidden" name="event[ticketid]" value="0">
 							{list id="eventedit-ticket" tipid="ticketid" tip="Test" items=$event.ticket

@@ -1441,7 +1441,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             // Use multi-value INSERT query
             $values = array();
             foreach ($args['phones'] as $numberid) {
-                $values[] = sprintf('(%d, %d)', $numberid, $args['assignmentid']);
+                $values[] = sprintf('(%d, %d)', intval($numberid), $args['assignmentid']);
             }
 
             $this->db->Execute('INSERT INTO voip_number_assignments (number_id, assignment_id)
@@ -1623,7 +1623,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             if (empty($a['dateto'])) {
                 $to = 0;
             } elseif (preg_match('/^[0-9]+$/', $a['dateto'])) {
-                $to = strtotime('+ 1 day', $a['dateto']) - 1;
+                $to = strtotime('tomorrow', strtotime('today', $a['dateto'])) - 1;
             } else {
                 $error['dateto'] = trans('Incorrect date format! Enter date in YYYY/MM/DD format!');
             }
@@ -1961,6 +1961,8 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 
     public function GetTradeDocumentArchiveStats($ids)
     {
+        $ids = Utils::filterIntegers($ids);
+
         $archive_stats = $this->db->GetRow(
             'SELECT SUM(CASE WHEN d.archived = 1 THEN 1 ELSE 0 END) AS archive,
 			SUM(CASE WHEN d.archived = 0 THEN 1 ELSE 0 END) AS current,
@@ -1968,7 +1970,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 			SUM(CASE WHEN a.contenttype = ? THEN 1 ELSE 0 END) AS pdf
 		FROM documents d
 		LEFT JOIN documentattachments a ON a.docid = d.id AND a.type = ?
-		WHERE d.id IN (' . implode(',', $ids) . ')',
+		WHERE d.id IN (' . implode(', ', $ids) . ')',
             array('text/html', 'application/pdf', 1)
         );
 
@@ -2446,7 +2448,6 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             . (isset($offset) ? ' OFFSET ' . $offset : ''));
 
         if (!empty($invoicelist)) {
-            $now = time();
             foreach ($invoicelist as &$invoice) {
                 if (!empty($invoice['documentreferenced'])) {
                     if (!isset($document_manager)) {
@@ -3443,7 +3444,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             .' GROUP BY d.id, number, cdate, archived, cancelled, d.customerid,
 			d.name, address, zip, city, numberplans.template, closed, published, c.name, d.currency, d.currencyvalue '
             .($having ?? '')
-            .$sqlord.' '.$direction
+            . (empty($sqlord) ? '' : $sqlord . ' ' . $direction)
             . (isset($limit) ? ' LIMIT ' . $limit : '')
             . (isset($offset) ? ' OFFSET ' . $offset : ''));
 
@@ -4739,7 +4740,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
                 . ($default ? (
                     isset($default_taxlabel)
                         ? ' AND label = ' . $this->db->Escape($default_taxlabel)
-                        : (isset($default_taxrate) ? ' AND value = ' . $default_taxrate : '')
+                        : (isset($default_taxrate) ? ' AND value = ' . floatval(str_replace(',', '.', $default_taxrate)) : '')
                 ) : '')
             . ' ORDER BY value',
             'id',
@@ -4782,7 +4783,9 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
         if (!is_array($ids)) {
             $ids = array($ids);
         }
-        $this->db->Execute('UPDATE documents SET published = 1 WHERE id IN (' . implode(',', $ids) . ')');
+        $ids = Utils::filterIntegers($ids);
+
+        $this->db->Execute('UPDATE documents SET published = 1 WHERE id IN (' . implode(', ', $ids) . ')');
     }
 
     public function isDocumentPublished($id)
@@ -4808,7 +4811,9 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
         if (!is_array($ids)) {
             $ids = array($ids);
         }
-        $this->db->Execute('UPDATE documents SET senddate = ?NOW? WHERE id IN (' . implode(',', $ids) . ')');
+        $ids = Utils::filterIntegers($ids);
+
+        $this->db->Execute('UPDATE documents SET senddate = ?NOW? WHERE id IN (' . implode(', ', $ids) . ')');
     }
 
     public function GetReceiptList(array $params)
@@ -4932,7 +4937,7 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
             .' GROUP BY documents.id, currency, currencyvalue, number, cdate, customerid, documents.name, address, zip, city, numberplans.template,
             vusers.rname, extnumber, closed '
             .$having
-            .($sqlord != '' ? $sqlord : '')
+            . (empty($sqlord) ? '' : $sqlord)
             . (isset($limit) ? ' LIMIT ' . $limit : '')
             . (isset($offset) ? ' OFFSET ' . $offset : ''),
             array($registry)
@@ -5540,11 +5545,16 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 
     public function GetDocumentsForBalanceRecords($ids, $doctypes)
     {
+        $ids = Utils::filterIntegers($ids);
+        if (empty($ids)) {
+            return [];
+        }
+
         return $this->db->GetCol(
             "SELECT DISTINCT docid FROM cash c
 			JOIN documents d ON d.id = c.docid
 			WHERE d.type IN ?
-				AND c.id IN (" . implode(',', $ids) . ")",
+				AND c.id IN (" . implode(', ', $ids) . ")",
             array($doctypes)
         );
     }
@@ -5559,6 +5569,11 @@ class LMSFinanceManager extends LMSManager implements LMSFinanceManagerInterface
 
     public function CheckNodeTariffRestrictions($aid, $nodes, $datefrom, $dateto)
     {
+        $nodes = Utils::filterIntegers($nodes);
+        if (empty($nodes)) {
+            return [];
+        }
+
         $nodeassigns = $this->db->GetCol(
             'SELECT DISTINCT na.nodeid FROM nodeassignments na
             JOIN nodes n ON n.id = na.nodeid

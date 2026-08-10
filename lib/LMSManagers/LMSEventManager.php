@@ -46,6 +46,7 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
             'endtime' => $event['endtime'],
             SYSLOG::RES_USER => Auth::GetCurrentUser(),
             'private' => $event['private'],
+            'note' => $event['note'],
             'closed' => isset($event['close']) ? 1 : 0,
             SYSLOG::RES_CUST => empty($event['custid']) ? null : $event['custid'],
             'type' => $event['type'],
@@ -63,9 +64,9 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
 
         $this->db->Execute(
             'INSERT INTO events (title, description, date, begintime, enddate,
-                endtime, userid, creationdate, private, closed, customerid, type, address_id, nodeid,
+                endtime, userid, creationdate, private, note, closed, customerid, type, address_id, nodeid,
                 ticketid, netnodeid, netdevid, divisionid)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?NOW?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?NOW?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             array_values($args)
         );
 
@@ -453,12 +454,21 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
 
         $netdevfilter = empty($netdevid) ? '' : ' AND events.netdevid = ' . intval($netdevid);
         $netnodefilter = empty($netnodeid) ? '' : ' AND events.netnodeid = ' . intval($netnodeid);
+
+        if (!empty($divisionid)) {
+            $divisionid = is_array($divisionid) ? Utils::filterIntegers($divisionid) : intval($divisionid);
+        }
+
         $divisionfilter = empty($divisionid)
             ? ''
             : ' AND (
-                events.divisionid ' . (is_array($divisionid) ? 'IN (' . implode(',', $divisionid) . ')' : '=' . intval($divisionid))
-                . ' OR c.divisionid ' . (is_array($divisionid) ? 'IN (' . implode(',', $divisionid) . ')' : '=' . intval($divisionid))
+                events.divisionid ' . (is_array($divisionid) ? 'IN (' . implode(',', $divisionid) . ')' : '=' . $divisionid)
+                . ' OR c.divisionid ' . (is_array($divisionid) ? 'IN (' . implode(',', $divisionid) . ')' : '=' . $divisionid)
             . ')';
+
+        if (!empty($userid)) {
+            $userid = is_array($userid) ? Utils::filterIntegers($userid) : intval($userid);
+        }
 
         if (empty($userid)) {
             $userfilter = '';
@@ -467,19 +477,22 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
                 if (!empty($userand)) {
                     $userfilter = ' AND (EXISTS (SELECT COUNT(userid), eventid FROM eventassignments WHERE eventid = events.id AND userid IN ('
                         . implode(',', $userid) . ') GROUP BY eventid HAVING(COUNT(eventid) = ' . count($userid) . '))
-                        ' . (in_array('-1', $userid) ? ' AND NOT EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id)' : '') . ')';
+                        ' . (in_array(-1, $userid) ? ' AND NOT EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id)' : '') . ')';
                 } else {
-                    $userfilter = ' AND (EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id AND userid IN (' . implode(',', $userid) . '))
-                        ' . (in_array('-1', $userid) ? ' OR NOT EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id)' : '') . ')';
+                    $userfilter = ' AND (EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id AND userid IN (' . implode(', ', $userid) . '))
+                        ' . (in_array(-1, $userid) ? ' OR NOT EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id)' : '') . ')';
                 }
             } else {
-                $userid = intval($userid);
                 if ($userid == -1) {
                     $userfilter = ' AND NOT EXISTS (SELECT 1 FROM eventassignments WHERE eventid = events.id)';
                 } else {
                     $userfilter = ' AND EXISTS ( SELECT 1 FROM eventassignments WHERE eventid = events.id AND userid = ' . $userid . ')';
                 }
             }
+        }
+
+        if (!empty($type)) {
+            $type = is_array($type) ? Utils::filterIntegers($type) : intval($type);
         }
 
         if ($count) {
@@ -492,12 +505,12 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
 				LEFT JOIN vusers ON (userid = vusers.id)
 				WHERE ((date >= ? AND date < ?) OR (enddate != 0 AND date < ? AND enddate >= ?))'
                 . $privacy_condition
-                . ($customerid ? ' AND events.customerid = '.intval($customerid) : '')
+                . ($customerid ? ' AND events.customerid = ' . intval($customerid) : '')
                 . $userfilter
                 . $netnodefilter
                 . $netdevfilter
                 . $overduefilter
-                . (!empty($type) ? ' AND events.type ' . (is_array($type) ? 'IN (' . implode(',', Utils::filterIntegers($type)) . ')' : '=' . intval($type)) : '')
+                . (empty($type) ? '' : ' AND events.type ' . (is_array($type) ? 'IN (' . implode(',', $type) . ')' : '=' . $type))
                 . $divisionfilter
                 . $closedfilter,
                 array($startdate, $enddate, $enddate, $startdate)
@@ -557,12 +570,12 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
             ) cc ON cc.customerid = c.id
             WHERE ((date >= ? AND date < ?) OR (enddate != 0 AND date < ? AND enddate >= ?))'
             . $privacy_condition
-            . ($customerid ? ' AND events.customerid = '.intval($customerid) : '')
+            . ($customerid ? ' AND events.customerid = ' . intval($customerid) : '')
             . $userfilter
             . $netnodefilter
             . $netdevfilter
             . $overduefilter
-            . (!empty($type) ? ' AND events.type ' . (is_array($type) ? 'IN (' . implode(',', Utils::filterIntegers($type)) . ')' : '=' . intval($type)) : '')
+            . (empty($type) ? '' : ' AND events.type ' . (is_array($type) ? 'IN (' . implode(',', $type) . ')' : '=' . $type))
             . $divisionfilter
             . $closedfilter
             . ' ORDER BY events.date,
@@ -687,7 +700,7 @@ class LMSEventManager extends LMSManager implements LMSEventManagerInterface
                 . (!empty($search['title']) ? ' AND title ?LIKE? ' . $this->db->Escape('%' . $search['title'] . '%') : '')
                 . (!empty($search['description']) ? ' AND description ?LIKE? ' . $this->db->Escape('%' . $search['description'] . '%') : '')
                 . (!empty($search['note']) ? ' AND note ?LIKE? ' . $this->db->Escape('%' . $search['note'] . '%') : '')
-            . $sqlord,
+            . (empty($sqlord) ? '' : $sqlord),
             array(Auth::GetCurrentUser())
         );
 

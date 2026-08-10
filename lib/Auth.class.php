@@ -28,6 +28,9 @@ use PragmaRX\Google2FA\Google2FA;
 
 class Auth
 {
+    // minimum delay enforced between two failed password attempts for the
+    // same account, to slow down brute-force/dictionary attacks
+    const LOGIN_THROTTLE_SECONDS = 2;
 
     private $id = null;
     public $login;
@@ -171,6 +174,7 @@ class Auth
             $this->id = $this->id ?: $this->SESSION->get('session_id');
 
             if (isset($loginform)) {
+                $this->SESSION->regenerateSID();
                 $this->DB->Execute('UPDATE users SET lastlogindate=?, lastloginip=? WHERE id=?', array(time(), $this->ip ,$this->id));
                 writesyslog('User '.$this->login . (empty($this->authcode) ? '' : ' (authentication code)') . ' logged in.', LOG_INFO);
                 if ($this->SYSLOG) {
@@ -274,7 +278,15 @@ class Auth
             return true;
         }
 
-        if (md5($this->passwd) == $dbpasswd) {
+        // legacy accounts not yet migrated to password_hash(); hash_equals()
+        // avoids the PHP loose-comparison ("magic hash") type-juggling bypass
+        if (hash_equals((string) $dbpasswd, md5($this->passwd))) {
+            if ($this->id) {
+                $this->DB->Execute(
+                    'UPDATE users SET passwd = ? WHERE id = ?',
+                    array(password_hash($this->passwd, PASSWORD_DEFAULT), $this->id)
+                );
+            }
             return true;
         }
 
@@ -434,7 +446,7 @@ class Auth
 
         if ($user = $this->DB->GetRow('SELECT id, name, rname, passwd, hosts, trustedhosts, lastlogindate, lastloginip,
 				passwdforcechange, passwdexpiration, passwdlastchange, access, accessfrom, accessto,
-				twofactorauth, twofactorauthsecretkey
+				twofactorauth, twofactorauthsecretkey, failedlogindate
 			FROM vusers WHERE login=? AND deleted=0', array($this->login))) {
             $this->logname = $user['name'];
             $this->logrname = $user['rname'];
@@ -520,6 +532,8 @@ class Auth
                     } else {
                         $this->error = trans("Too many failed login attempts in short time period.<br>Try again in a few minutes.");
                     }
+                } elseif (!empty($user['failedlogindate']) && time() - $user['failedlogindate'] < self::LOGIN_THROTTLE_SECONDS) {
+                    $this->error = trans("Too many failed login attempts in short time period.<br>Try again in a few minutes.");
                 } else {
                     $hook_data = LMSPluginManager::getInstance()->executeHook(
                         'password_verification',

@@ -3247,7 +3247,7 @@ class LMS
 
             if ($files) {
                 foreach ($files as $chunk) {
-                    if (isset($header['X-LMS-Format']) && $headers['X-LMS-Format'] == 'html' && isset($chunk['content-id'])) {
+                    if (isset($headers['X-LMS-Format']) && $headers['X-LMS-Format'] == 'html' && isset($chunk['content-id'])) {
                         $this->mail_object->addStringEmbeddedImage(
                             $chunk['data'],
                             $chunk['content-id'],
@@ -3779,10 +3779,10 @@ class LMS
         return $manager->DocumentAttachmentExists($md5sum);
     }
 
-    public function GetDocumentFullContents($id, $with_reference_document = false)
+    public function GetDocumentFullContents($id, $with_reference_document = false, $attachments = null)
     {
         $manager = $this->getDocumentManager();
-        return $manager->GetDocumentFullContents($id, $with_reference_document);
+        return $manager->GetDocumentFullContents($id, $with_reference_document, $attachments);
     }
 
     public function SendDocuments($docs, $type, $params)
@@ -3791,16 +3791,16 @@ class LMS
         return $manager->SendDocuments($docs, $type, $params);
     }
 
-    public function deleteDocumentAttachments($docid)
+    public function deleteDocumentAttachments($docid, array $attachmentIds = [])
     {
         $manager = $this->getDocumentManager();
-        return $manager->deleteDocumentAttachments($docid);
+        return $manager->deleteDocumentAttachments($docid, $attachmentIds);
     }
 
-    public function DeleteDocument($docid)
+    public function DeleteDocument($docid, array $attachmentIds = [])
     {
         $manager = $this->getDocumentManager();
-        return $manager->DeleteDocument($docid);
+        return $manager->DeleteDocument($docid, $attachmentIds);
     }
 
     public function CopyDocumentPermissions($src_userid, $dst_userid)

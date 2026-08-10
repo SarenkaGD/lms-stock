@@ -315,7 +315,7 @@ class LMSHelpdeskManager extends LMSManager implements LMSHelpdeskManagerInterfa
         if (empty($subject)) {
             $subjectfilter = '';
         } else {
-            $subjectfilter = " AND t.subject ?LIKE? '%" . $subject . "%'";
+            $subjectfilter = " AND t.subject ?LIKE? " . $this->db->Escape('%' . $subject . '%');
         }
 
         if (empty($fromdate)) {
@@ -417,10 +417,13 @@ class LMSHelpdeskManager extends LMSManager implements LMSHelpdeskManagerInterfa
         }
 
         if (!empty($parentids)) {
-            if (!is_array($parentids)) {
+            if (!is_array($parrentids)) {
                 $parentids = array($parentids);
             }
+            $parentids = Utils::filterIntegers($parentids);
+        }
 
+        if (!empty($parentids)) {
             if (in_array(-1, $parentids)) {
                 $parentfilter = ' AND t.parentid IS NULL';
             } else {
@@ -1215,9 +1218,10 @@ class LMSHelpdeskManager extends LMSManager implements LMSHelpdeskManagerInterfa
         // auto fix for misconfigured mail servers which mix character encodings in post headers
         $headers = isset($ticket['headers']) ? mb_convert_encoding($ticket['headers'], 'UTF-8', 'UTF-8') : '';
 
-        $this->db->Execute('INSERT INTO rtmessages (ticketid, customerid, createtime,
+        $this->db->Execute('INSERT INTO rtmessages (ticketid, userid, customerid, createtime,
 				subject, body, mailfrom, phonefrom, messageid, replyto, headers, contenttype, extid)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array($id,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array($id,
+            empty($ticket['requestor_userid']) ? Auth::GetCurrentUser() : $ticket['requestor_userid'],
             empty($ticket['customerid']) ? null : $ticket['customerid'],
             $createtime,
             $ticket['subject'],
@@ -1232,9 +1236,10 @@ class LMSHelpdeskManager extends LMSManager implements LMSHelpdeskManagerInterfa
         ));
 
         if (isset($ticket['note']) && $ticket['note']) {
-            $this->db->Execute('INSERT INTO rtmessages (ticketid, customerid, createtime,
+            $this->db->Execute('INSERT INTO rtmessages (ticketid, userid, customerid, createtime,
                         subject, body, mailfrom, phonefrom, messageid, replyto, headers, type)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array($id,
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array($id,
+                empty($ticket['requestor_userid']) ? Auth::GetCurrentUser() : $ticket['requestor_userid'],
                 empty($ticket['customerid']) ? null : $ticket['customerid'],
                 $createtime,
                 $ticket['subject'],
