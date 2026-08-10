@@ -108,7 +108,9 @@ function filter() {
 			{$productlist[pl].comment}
 		</TD>
 		<TD WIDTH="1%" onClick="return self.location.href='?m=stckproductinfo&id={$productlist[pl].productid}';" align="right" VALIGN="TOP" NOWRAP>
-			<span id="sn{$productlist[pl].id}">{$productlist[pl].serialnumber}</span> <img class="stck-copytoclipboard-ui" data-snid="sn{$productlist[pl].id}" alt="{t}Copy to clipboard{/t}" {tip text="Copy to clipboard"} src="/img/clone.gif">
+			<span id="sn{$productlist[pl].id}">{$productlist[pl].serialnumber}</span>
+			{button type="link" class="lms-ui-button-clipboard stck-copytoclipboard-ui" icon="clipboard" clipboard="{$productlist[pl].serialnumber}" tip="Copy to clipboard"}
+			<img class="stck-copytoclipboard-ui" data-snid="sn{$productlist[pl].id}" alt="{t}Copy to clipboard{/t}" {tip text="Copy to clipboard"} src="/img/clone.gif">
 		</TD>
 		<TD WIDTH="1%" onClick="return self.location.href='?m=stckproductinfo&id={$productlist[pl].productid}';" align="right" VALIGN="TOP" NOWRAP>
 			{$productlist[pl].warranty}

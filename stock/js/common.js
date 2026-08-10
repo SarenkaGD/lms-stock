@@ -152,7 +152,7 @@ $(document).ready(function() {
 
 	$('.stck-copytoclipboard-ui').click(function(e) {
 		e.stopPropagation();
-		navigator.clipboard.writeText($('#'+$(this).data('snid')).text());
+		navigator.clipboard.writeText($(this).data('clipboard-text'));
 	});
 
 });
